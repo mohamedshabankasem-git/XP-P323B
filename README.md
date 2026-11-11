@@ -23,22 +23,21 @@ flutter analyze
 flutter test
 ```
 
-لبناء نسخة Release صغيرة الحجم، مقسمة حسب معمارية المعالج:
+لبناء نسخة Release مخصصة لمعمارية ARM64 فقط:
 
 ```sh
-flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm
+flutter build apk --release --target-platform android-arm64
 ```
 
-ستجد ملفات APK في:
+ينتج ملف APK واحد يحتوي على مكتبات `arm64-v8a` فقط:
 
 ```
-build/app/outputs/flutter-apk/
+build/app/outputs/flutter-apk/app-release.apk
 ```
 
-- `app-arm64-v8a-release.apk`: لمعظم الهواتف الحديثة 64-bit.
-- `app-armeabi-v7a-release.apk`: للأجهزة القديمة 32-bit.
-- لن يتم إنشاء نسخة x86_64؛ البناء يقتصر على ARM64 وARMv7.
+هذه النسخة مناسبة لمعظم هواتف Android الحديثة ذات المعالج 64-bit، ولا تشمل `armeabi-v7a` أو `x86_64`.
 
+في GitHub Actions يُرفع الملف كـ artifact باسم `xp-p323b-arm64-v8a-release` بعد نجاح التحليل والاختبارات والبناء.
 للتطوير والاختبار فقط يمكن استخدام:
 
 ```sh
