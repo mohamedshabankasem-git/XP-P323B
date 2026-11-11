@@ -152,7 +152,7 @@ class _HomeState extends State<Home> {
       'السعر: ${price.text}',
       '------------------------------',
       'شكراً لزيارتكم',
-    ].join('\\n');
+    ].join('\n');
     try {
       await printBytes(await RasterPrint.textToEscPos(text, fontSize: 24));
     } catch (error) {
