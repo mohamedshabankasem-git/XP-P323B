@@ -40,4 +40,12 @@ class PrinterBridge {
       _method.invokeMethod('write', {
         'bytes': Uint8List.fromList(bytes),
       });
+
+  Future<List<String>> renderPdf(String path) async {
+    final pages = await _method.invokeMethod<List<dynamic>>(
+      'renderPdf',
+      {'path': path},
+    );
+    return (pages ?? []).map((page) => page.toString()).toList();
+  }
 }
