@@ -41,13 +41,13 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build release APKs (split by ABI)
+        run: flutter build apk --release --split-per-abi
 
-      - name: Upload debug APK
+      - name: Upload release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: xp-p323b-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: xp-p323b-release-apks
+          path: build/app/outputs/flutter-apk/*-release.apk
           if-no-files-found: error
           retention-days: 14
