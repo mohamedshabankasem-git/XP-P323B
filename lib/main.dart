@@ -173,15 +173,15 @@ class _HomeState extends State<Home> {
 
   Future<void> printBytes(List<int> bytes) async {
     if (!await ensureConnected()) {
-      setState(() => tab = 2);
-      toast('الطابعة غير متصلة بالتطبيق. اختر الطابعة واضغط اتصال.');
+      if (mounted) setState(() => tab = 1);
+      toast('الطابعة غير متصلة بالتطبيق. افتح الإعدادات واختر الطابعة ثم اضغط اتصال.');
       return;
     }
     try {
       await bridge.write(bytes);
       toast('تم إرسال أمر الطباعة');
     } catch (error) {
-      setState(() => selected = null);
+      if (mounted) setState(() => selected = null);
       toast('فشل إرسال الطباعة: $error');
     }
   }
@@ -199,7 +199,7 @@ class _HomeState extends State<Home> {
       if (!await ensureConnected()) {
         toast(
           automatic
-              ? 'تم استقبال المشاركة، لكن لا يوجد اتصال طباعة نشط. افتح شاشة الطابعة واتصل بها ثم أعد المشاركة.'
+              ? 'تم استقبال المشاركة، لكن لا يوجد اتصال طباعة نشط. افتح الإعدادات واتصل بالطابعة ثم أعد الطباعة.'
               : 'اتصل بالطابعة أولاً ثم أعد المحاولة.',
         );
         return;
