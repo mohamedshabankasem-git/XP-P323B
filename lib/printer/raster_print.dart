@@ -76,9 +76,27 @@ class RasterPrint {
     List<int> encodedImage, {
     int threshold = 160,
     int maxWidth = maxWidthDots,
+    String alignment = 'center',
   }) {
+    final decoded = img.decodeImage(Uint8List.fromList(encodedImage));
+    if (decoded == null) {
+      throw const FormatException('صيغة الصورة غير مدعومة أو الملف تالف');
+    }
+    final scaled = img.copyResize(
+      decoded,
+      width: math.min(maxWidth, decoded.width),
+      interpolation: img.Interpolation.average,
+    );
+    final canvas = img.Image(width: maxWidth, height: scaled.height);
+    img.fill(canvas, color: img.ColorRgb8(255, 255, 255));
+    final offset = alignment == 'left'
+        ? 0
+        : alignment == 'right'
+            ? maxWidth - scaled.width
+            : (maxWidth - scaled.width) ~/ 2;
+    img.compositeImage(canvas, scaled, dstX: offset);
     final raster = imageToRaster(
-      encodedImage,
+      img.encodePng(canvas),
       threshold: threshold,
       maxWidth: maxWidth,
     );
@@ -99,6 +117,7 @@ class RasterPrint {
     int widthDots = maxWidthDots,
     int maxHeight = RasterPrint.maxHeightDots,
     int fontSize = 28,
+    String alignment = 'center',
   }) async {
     final content = text.trim();
     if (content.isEmpty) {
@@ -115,7 +134,11 @@ class RasterPrint {
         ),
       ),
       textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
+      textAlign: alignment == 'left'
+          ? TextAlign.left
+          : alignment == 'right'
+              ? TextAlign.right
+              : TextAlign.center,
     );
     painter.layout(maxWidth: widthDots.toDouble());
 
@@ -127,7 +150,12 @@ class RasterPrint {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawColor(Colors.white, BlendMode.src);
-    painter.paint(canvas, const Offset(8, 8));
+    final horizontalOffset = alignment == 'left'
+        ? 8.0
+        : alignment == 'right'
+            ? (widthDots - painter.width - 8).clamp(0.0, widthDots.toDouble())
+            : ((widthDots - painter.width) / 2).clamp(0.0, widthDots.toDouble());
+    painter.paint(canvas, Offset(horizontalOffset, 8));
     final picture = recorder.endRecording();
     final rendered = await picture.toImage(widthDots, height);
     final byteData = await rendered.toByteData(
@@ -146,11 +174,13 @@ class RasterPrint {
     String text, {
     int fontSize = 28,
     int widthDots = maxWidthDots,
+    String alignment = 'center',
   }) async {
     final png = await textToPng(
       text,
       fontSize: fontSize,
       widthDots: widthDots,
+      alignment: alignment,
     );
     return imageToEscPos(png, maxWidth: widthDots);
   }
