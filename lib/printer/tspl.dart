@@ -51,15 +51,15 @@ class Tspl {
       'GAP 2 mm,0 mm',
       'DIRECTION 1',
       'CLS',
-      'BITMAP 0,0,${raster.widthBytes},${raster.height},0,',
-    ].join('\r\n');
+    ].join('\r\n') +
+        '\r\nBITMAP 0,0,${raster.widthBytes},${raster.height},0,';
     final barcodeCommand = code.isEmpty
         ? ''
         : 'BARCODE 24,130,"128",60,1,0,2,2,"$code"\r\n';
     final suffix = '\r\n${barcodeCommand}PRINT 1,1\r\n';
 
     return <int>[
-      ...latin1.encode('$prefix\r\n'),
+      ...latin1.encode(prefix),
       ...raster.data,
       ...latin1.encode(suffix),
     ];
