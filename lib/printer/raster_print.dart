@@ -94,7 +94,7 @@ class RasterPrint {
   static Future<List<int>> textToPng(
     String text, {
     int widthDots = maxWidthDots,
-    int maxHeightDots = maxHeightDots,
+    int maxHeight = RasterPrint.maxHeightDots,
     int fontSize = 28,
   }) async {
     final content = text.trim();
@@ -117,7 +117,7 @@ class RasterPrint {
     painter.layout(maxWidth: widthDots.toDouble());
 
     final height = math.max(48, painter.height.ceil() + 24).toInt();
-    if (height > maxHeightDots) {
+    if (height > maxHeight) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
     }
 
