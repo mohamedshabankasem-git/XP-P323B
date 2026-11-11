@@ -26,8 +26,8 @@ class RasterPrint {
         maxHeightDots / decoded.height,
       ),
     );
-    final width = math.max(1, (decoded.width * scale).floor());
-    final height = math.max(1, (decoded.height * scale).floor());
+    final width = math.max(1, (decoded.width * scale).floor()).toInt();
+    final height = math.max(1, (decoded.height * scale).floor()).toInt();
     final raster = (width == decoded.width && height == decoded.height)
         ? decoded
         : img.copyResize(
@@ -91,7 +91,7 @@ class RasterPrint {
     painter.layout(maxWidth: maxWidthDots.toDouble());
 
     final width = maxWidthDots;
-    final height = math.max(48, painter.height.ceil() + 24);
+    final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeightDots) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
     }
