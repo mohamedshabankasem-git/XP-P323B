@@ -22,7 +22,7 @@ void main() {
         case 'getSettings':
           return <String, dynamic>{
             'paperWidthMm': 80,
-            'printAlignment': 'center',
+            'printAlignment': 'right',
           };
         case 'setPrintAlignment':
         case 'setPaperWidth':
@@ -62,6 +62,8 @@ void main() {
 
     expect(find.text('إعدادات الطباعة'), findsOneWidget);
     expect(find.text('محاذاة الطباعة'), findsOneWidget);
+    // A saved non-default alignment must appear after asynchronous settings load.
+    expect(find.text('يمين'), findsOneWidget);
 
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
