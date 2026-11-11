@@ -426,23 +426,25 @@ class _HomeState extends State<Home> {
           const SizedBox(height: 8),
           const Text('اختر عرض رول الورق المستخدم في طباعة الفواتير والملفات المشتركة.'),
           const SizedBox(height: 12),
-          RadioListTile<int>(
-            value: 58,
+          RadioGroup<int>(
             groupValue: paperWidthMm,
             onChanged: (value) {
               if (value != null) changePaperWidth(value);
             },
-            title: const Text('58 مم'),
-            subtitle: const Text('عرض طباعة 384 نقطة'),
-          ),
-          RadioListTile<int>(
-            value: 80,
-            groupValue: paperWidthMm,
-            onChanged: (value) {
-              if (value != null) changePaperWidth(value);
-            },
-            title: const Text('80 مم'),
-            subtitle: const Text('حد أقصى للطباعة 576 نقطة (72 مم فعلياً)'),
+            child: const Column(
+              children: [
+                RadioListTile<int>(
+                  value: 58,
+                  title: Text('58 مم'),
+                  subtitle: Text('عرض طباعة 384 نقطة'),
+                ),
+                RadioListTile<int>(
+                  value: 80,
+                  title: Text('80 مم'),
+                  subtitle: Text('حد أقصى للطباعة 576 نقطة (72 مم فعلياً)'),
+                ),
+              ],
+            ),
           ),
           const Divider(),
           const ListTile(
