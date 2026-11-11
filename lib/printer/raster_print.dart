@@ -145,9 +145,6 @@ class RasterPrint {
     });
   }
 
-  static List<int> textToEscPosSyncUnsupported() =>
-      throw UnsupportedError('Use textToEscPos for Flutter text rendering');
-
   static Future<List<int>> textToPng(
     String text, {
     int widthDots = maxWidthDots,
