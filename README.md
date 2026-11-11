@@ -21,6 +21,27 @@ bash scripts/prepare_android.sh
 flutter pub get
 flutter analyze
 flutter test
+```
+
+لبناء نسخة Release صغيرة الحجم، مقسمة حسب معمارية المعالج:
+
+```sh
+flutter build apk --release --split-per-abi
+```
+
+ستجد ملفات APK في:
+
+```
+build/app/outputs/flutter-apk/
+```
+
+- `app-arm64-v8a-release.apk`: لمعظم الهواتف الحديثة 64-bit.
+- `app-armeabi-v7a-release.apk`: للأجهزة القديمة 32-bit.
+- `app-x86_64-release.apk`: لأجهزة Android بمعمارية x86_64.
+
+للتطوير والاختبار فقط يمكن استخدام:
+
+```sh
 flutter build apk --debug
 ```
 
