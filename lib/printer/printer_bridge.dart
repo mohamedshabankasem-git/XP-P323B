@@ -43,13 +43,19 @@ class PrinterBridge {
     return result ?? <dynamic, dynamic>{'connected': false};
   }
 
-  Future<int> paperWidthMm() async {
-    final settings = await _method.invokeMethod<Map<dynamic, dynamic>>('getSettings');
-    return (settings?['paperWidthMm'] as num?)?.toInt() ?? 80;
+  Future<Map<String, dynamic>> settings() async {
+    final value = await _method.invokeMethod<Map<dynamic, dynamic>>('getSettings');
+    return {
+      'paperWidthMm': (value?['paperWidthMm'] as num?)?.toInt() ?? 80,
+      'printAlignment': value?['printAlignment']?.toString() ?? 'center',
+    };
   }
 
   Future<void> setPaperWidthMm(int width) =>
       _method.invokeMethod('setPaperWidth', {'paperWidthMm': width});
+
+  Future<void> setPrintAlignment(String alignment) =>
+      _method.invokeMethod('setPrintAlignment', {'alignment': alignment});
 
   Future<void> write(List<int> bytes) =>
       _method.invokeMethod('write', {'bytes': Uint8List.fromList(bytes)});

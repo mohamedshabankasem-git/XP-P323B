@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'printer/printer_bridge.dart';
-import 'printer/tspl.dart';
 import 'printer/escpos.dart';
 import 'printer/raster_print.dart';
 
@@ -35,10 +34,6 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final bridge = PrinterBridge();
-  final product = TextEditingController(text: 'منتج تجريبي');
-  final price = TextEditingController(text: '25.00');
-  final barcode = TextEditingController(text: '6221234567890');
-  final invoice = TextEditingController(text: '1001');
   final devices = <PrinterDevice>[];
   final sharedItems = <Map<String, dynamic>>[];
   PrinterDevice? selected;
@@ -47,6 +42,7 @@ class _HomeState extends State<Home> {
   String shareStatus = 'لم يتم استقبال مشاركة بعد';
   int tab = 0;
   int paperWidthMm = 80;
+  String printAlignment = 'center';
   bool busy = false;
   bool printingShare = false;
 
@@ -65,10 +61,6 @@ class _HomeState extends State<Home> {
   @override
   void dispose() {
     shareSub?.cancel();
-    product.dispose();
-    price.dispose();
-    barcode.dispose();
-    invoice.dispose();
     super.dispose();
   }
 
@@ -96,7 +88,7 @@ class _HomeState extends State<Home> {
       shareStatus = names.isNotEmpty
           ? names.join('، ')
           : (text.trim().isNotEmpty ? 'نص مستلم' : 'مشاركة فارغة');
-      tab = 3;
+      tab = 0;
     });
 
     // The share shortcut is intended to print immediately when a printer is
@@ -108,8 +100,13 @@ class _HomeState extends State<Home> {
 
   Future<void> _loadSettings() async {
     try {
-      final width = await bridge.paperWidthMm();
-      if (mounted) setState(() => paperWidthMm = width);
+      final settings = await bridge.settings();
+      if (mounted) {
+        setState(() {
+          paperWidthMm = settings['paperWidthMm'] as int;
+          printAlignment = settings['printAlignment'] as String;
+        });
+      }
     } catch (error) {
       toast('تعذر تحميل إعدادات الورق: $error');
     }
@@ -189,41 +186,6 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<void> printLabel() async {
-    try {
-      final bytes = await Tspl.labelRaster(
-        name: product.text,
-        price: price.text,
-        barcode: barcode.text,
-      );
-      await printBytes(bytes);
-    } catch (error) {
-      toast('تعذر تجهيز الملصق: $error');
-    }
-  }
-
-  Future<void> printInvoice() async {
-    final text = [
-      'فاتورة رقم: ${invoice.text}',
-      '------------------------------',
-      'الصنف: ${product.text}',
-      'السعر: ${price.text}',
-      '------------------------------',
-      'شكراً لزيارتكم',
-    ].join('\n');
-    try {
-      await printBytes(
-        await RasterPrint.textToEscPos(
-          text,
-          fontSize: 24,
-          widthDots: printWidthDots,
-        ),
-      );
-    } catch (error) {
-      toast('تعذر تجهيز الفاتورة: $error');
-    }
-  }
-
   Future<void> printShared({bool automatic = false}) async {
     if (printingShare) return;
     if (sharedItems.isEmpty && sharedText.trim().isEmpty) {
@@ -251,7 +213,7 @@ class _HomeState extends State<Home> {
         if (mime.startsWith('image/')) {
           final bytes = await File(path).readAsBytes();
           await bridge.write(
-            RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots),
+            RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots, alignment: printAlignment),
           );
           printed++;
         } else if (mime == 'application/pdf' ||
@@ -266,7 +228,7 @@ class _HomeState extends State<Home> {
           for (final pagePath in pages) {
             final bytes = await File(pagePath).readAsBytes();
             await bridge.write(
-              RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots),
+              RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots, alignment: printAlignment),
             );
             printed++;
           }
@@ -278,6 +240,7 @@ class _HomeState extends State<Home> {
           await RasterPrint.textToEscPos(
             sharedText,
             widthDots: printWidthDots,
+            alignment: printAlignment,
           ),
         );
         printed++;
@@ -316,8 +279,8 @@ class _HomeState extends State<Home> {
         ),
       );
 
-  Widget _printerPage() => ListView(
-        padding: const EdgeInsets.all(16),
+  Widget _printerSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('الاتصال بالطابعة',
               style: Theme.of(context).textTheme.titleLarge),
@@ -418,6 +381,16 @@ class _HomeState extends State<Home> {
         ],
       );
 
+  Future<void> changeAlignment(String alignment) async {
+    try {
+      await bridge.setPrintAlignment(alignment);
+      if (mounted) setState(() => printAlignment = alignment);
+      toast('تم حفظ محاذاة الطباعة');
+    } catch (error) {
+      toast('تعذر حفظ محاذاة الطباعة: $error');
+    }
+  }
+
   Widget _settingsPage() => ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -446,6 +419,28 @@ class _HomeState extends State<Home> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          const Text('محاذاة الطباعة'),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            initialValue: printAlignment,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              helperText: 'تُطبّق على النصوص والصور والملفات المشتركة',
+            ),
+            items: const [
+              DropdownMenuItem(value: 'right', child: Text('يمين')),
+              DropdownMenuItem(value: 'center', child: Text('منتصف')),
+              DropdownMenuItem(value: 'left', child: Text('يسار')),
+            ],
+            onChanged: (value) {
+              if (value != null) changeAlignment(value);
+            },
+          ),
+          const Divider(),
+          Text('إدارة الطابعة', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _printerSection(),
           const Divider(),
           const ListTile(
             leading: Icon(Icons.info_outline),
@@ -478,47 +473,6 @@ class _HomeState extends State<Home> {
           body: IndexedStack(
             index: tab,
             children: [
-              ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text('ملصق منتج',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  field(product, 'اسم المنتج'),
-                  field(price, 'السعر'),
-                  field(barcode, 'الباركود'),
-                  FilledButton.icon(
-                    onPressed: printLabel,
-                    icon: const Icon(Icons.print),
-                    label: const Text('طباعة ملصق تجريبي'),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'اسم المنتج والسعر يُرسمان كصورة عربية عبر Flutter ثم يطبعان بأمر TSPL BITMAP، والباركود بأمر TSPL.',
-                  ),
-                ],
-              ),
-              ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text('الفواتير',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  field(invoice, 'رقم الفاتورة'),
-                  field(product, 'الصنف'),
-                  field(price, 'السعر'),
-                  FilledButton.icon(
-                    onPressed: printInvoice,
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text('طباعة فاتورة اختبار'),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'الفاتورة تُرسم كنص عربي RTL إلى صورة حرارية، مع احترام عرض الورق المحدد من الإعدادات.',
-                  ),
-                ],
-              ),
-              _printerPage(),
               _sharePage(),
               _settingsPage(),
             ],
@@ -527,26 +481,8 @@ class _HomeState extends State<Home> {
             selectedIndex: tab,
             onDestinationSelected: (value) => setState(() => tab = value),
             destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.sell_outlined),
-                label: 'الملصقات',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long),
-                label: 'الفواتير',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.print_outlined),
-                label: 'الطابعة',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.share),
-                label: 'المشاركة',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                label: 'الإعدادات',
-              ),
+              NavigationDestination(icon: Icon(Icons.share), label: 'المشاركة'),
+              NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'الإعدادات'),
             ],
           ),
         ),

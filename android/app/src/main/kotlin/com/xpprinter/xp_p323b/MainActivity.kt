@@ -73,10 +73,24 @@ class MainActivity : FlutterActivity() {
                     "discoverDevices" -> result.success(discover())
                     "connectionStatus" -> result.success(connectionStatus())
                     "restoreConnection" -> result.success(restoreConnection())
-                    "getSettings" -> result.success(
-                        mapOf("paperWidthMm" to getSharedPreferences("printer", MODE_PRIVATE)
-                            .getInt("paperWidthMm", 80))
-                    )
+                    "getSettings" -> {
+                        val prefs = getSharedPreferences("printer", MODE_PRIVATE)
+                        result.success(
+                            mapOf(
+                                "paperWidthMm" to prefs.getInt("paperWidthMm", 80),
+                                "printAlignment" to prefs.getString("printAlignment", "center"),
+                            ),
+                        )
+                    }
+                    "setPrintAlignment" -> {
+                        val alignment = call.argument<String>("alignment") ?: "center"
+                        require(alignment in listOf("right", "center", "left")) {
+                            "Unsupported print alignment"
+                        }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit()
+                            .putString("printAlignment", alignment).apply()
+                        result.success(true)
+                    }
                     "setPaperWidth" -> {
                         val width = call.argument<Int>("paperWidthMm") ?: 80
                         require(width == 58 || width == 80) { "Unsupported paper width" }

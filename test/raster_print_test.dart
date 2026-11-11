@@ -12,11 +12,15 @@ void main() {
     final encoded = img.encodePng(source);
     final command = RasterPrint.imageToEscPos(encoded);
 
+    // The image is centered on the printer's full 576-dot printable width.
     expect(
       command.take(10).toList(),
-      <int>[0x1B, 0x40, 0x1D, 0x76, 0x30, 0x00, 1, 0, 1, 0],
+      <int>[0x1B, 0x40, 0x1D, 0x76, 0x30, 0x00, 72, 0, 1, 0],
     );
-    expect(command[10], 0xFF);
+    expect(command[10 + 35], 0x0F);
+    expect(command[10 + 36], 0xF0);
+    expect(command.sublist(10, 10 + 35).every((byte) => byte == 0), isTrue);
+    expect(command.sublist(10 + 37, 10 + 72).every((byte) => byte == 0), isTrue);
     expect(command.sublist(command.length - 2), <int>[0x0A, 0x0A]);
   });
 
