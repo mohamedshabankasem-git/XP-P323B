@@ -144,18 +144,27 @@ class _HomeState extends State<Home> {
 
     setState(() => printingShare = true);
     var printed = 0;
-    var unsupportedPdf = false;
     try {
       for (final item in sharedItems) {
         final mime = (item['mimeType']?.toString() ?? '').toLowerCase();
         final path = item['path']?.toString() ?? '';
+        if (path.isEmpty) throw StateError('مسار الملف المستلم غير موجود');
+
         if (mime.startsWith('image/')) {
-          if (path.isEmpty) throw StateError('مسار الصورة المستلمة غير موجود');
           final bytes = await File(path).readAsBytes();
           await bridge.write(RasterPrint.imageToEscPos(bytes));
           printed++;
-        } else if (mime == 'application/pdf' || path.toLowerCase().endsWith('.pdf')) {
-          unsupportedPdf = true;
+        } else if (mime == 'application/pdf' ||
+            path.toLowerCase().endsWith('.pdf')) {
+          final pages = await bridge.renderPdf(path);
+          if (pages.isEmpty) {
+            throw StateError('ملف PDF لا يحتوي على صفحات قابلة للطباعة');
+          }
+          for (final pagePath in pages) {
+            final bytes = await File(pagePath).readAsBytes();
+            await bridge.write(RasterPrint.imageToEscPos(bytes));
+            printed++;
+          }
         }
       }
 
@@ -165,13 +174,9 @@ class _HomeState extends State<Home> {
       }
 
       if (printed > 0) {
-        toast('تم إرسال $printed عنصر للطباعة');
-      }
-      if (unsupportedPdf) {
-        toast('ملف PDF مستلم؛ تحويل صفحات PDF للطباعة سيكون في المرحلة التالية');
-      }
-      if (printed == 0 && !unsupportedPdf) {
-        toast('نوع الملف غير مدعوم حالياً؛ استخدم صورة أو نصاً');
+        toast('تم إرسال $printed عنصر/صفحة للطباعة');
+      } else {
+        toast('نوع الملف غير مدعوم حالياً؛ استخدم صورة أو PDF أو نصاً');
       }
     } catch (error) {
       toast('تعذر طباعة المشاركة: $error');
@@ -360,7 +365,7 @@ class _HomeState extends State<Home> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'الصور والنصوص تُحوّل إلى صورة حرارية أحادية اللون بعرض 576 نقطة. ملفات PDF تُستقبل حالياً، وسيضاف تحويل صفحاتها في مرحلة لاحقة.',
+                    'الصور وصفحات PDF والنصوص تُحوّل إلى صورة حرارية أحادية اللون بعرض أقصى 576 نقطة. يلزم اختبار الطباعة الفعلية وضبط التباين قبل الاعتماد.',
                   ),
                 ],
               ),
