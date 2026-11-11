@@ -272,14 +272,20 @@ class MainActivity : FlutterActivity() {
         val output = mutableListOf<Map<String, String>>()
         val adapter = BluetoothAdapter.getDefaultAdapter()
         if (adapter != null && btPermission()) {
-            adapter.bondedDevices.forEach {
-                output.add(
-                    mapOf(
-                        "name" to (it.name ?: "Bluetooth printer"),
-                        "address" to it.address,
-                        "transport" to "bluetooth",
-                    ),
-                )
+            if (!adapter.isEnabled) {
+                // Ask Android to enable Bluetooth through the system confirmation UI.
+                // The user remains in control; the app never silently toggles Bluetooth.
+                startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+            } else {
+                adapter.bondedDevices.forEach {
+                    output.add(
+                        mapOf(
+                            "name" to (it.name ?: "Bluetooth printer"),
+                            "address" to it.address,
+                            "transport" to "bluetooth",
+                        ),
+                    )
+                }
             }
         }
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
