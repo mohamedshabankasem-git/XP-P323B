@@ -213,24 +213,36 @@ class _HomeState extends State<Home> {
         if (mime.startsWith('image/')) {
           final bytes = await File(path).readAsBytes();
           await bridge.write(
-            RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots, alignment: printAlignment),
+            await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment),
           );
           printed++;
         } else if (mime == 'application/pdf' ||
             path.toLowerCase().endsWith('.pdf')) {
-          final pages = await bridge.renderPdf(
-            path,
-            widthDots: printWidthDots,
-          );
-          if (pages.isEmpty) {
+          final pageCount = await bridge.pdfPageCount(path);
+          if (pageCount < 1) {
             throw StateError('ملف PDF لا يحتوي على صفحات قابلة للطباعة');
           }
-          for (final pagePath in pages) {
-            final bytes = await File(pagePath).readAsBytes();
-            await bridge.write(
-              RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots, alignment: printAlignment),
+          // Render, convert and send each page before rendering the next one.
+          for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            final pagePath = await bridge.renderPdfPage(
+              path,
+              pageIndex: pageIndex,
+              widthDots: printWidthDots,
             );
-            printed++;
+            try {
+              final bytes = await File(pagePath).readAsBytes();
+              final command = await RasterPrint.imageToEscPosAsync(
+                bytes,
+                maxWidth: printWidthDots,
+                alignment: printAlignment,
+              );
+              await bridge.write(command);
+              printed++;
+            } finally {
+              try {
+                await File(pagePath).delete();
+              } catch (_) {}
+            }
           }
         }
       }
