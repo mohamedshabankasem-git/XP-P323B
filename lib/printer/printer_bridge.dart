@@ -28,21 +28,36 @@ class PrinterBridge {
         .toList();
   }
 
-  Future<void> connect(PrinterDevice device) =>
-      _method.invokeMethod('connect', {
-        'transport': device.transport,
-        'address': device.address,
-      });
+  Future<void> connect(PrinterDevice device) async {
+    await _method.invokeMethod('connect', {
+      'transport': device.transport,
+      'address': device.address,
+      'name': device.name,
+    });
+  }
+
+  Future<Map<dynamic, dynamic>> connectionStatus({bool restore = false}) async {
+    final result = await _method.invokeMethod<Map<dynamic, dynamic>>(
+      restore ? 'restoreConnection' : 'connectionStatus',
+    );
+    return result ?? <dynamic, dynamic>{'connected': false};
+  }
+
+  Future<int> paperWidthMm() async {
+    final settings = await _method.invokeMethod<Map<dynamic, dynamic>>('getSettings');
+    return (settings?['paperWidthMm'] as num?)?.toInt() ?? 80;
+  }
+
+  Future<void> setPaperWidthMm(int width) =>
+      _method.invokeMethod('setPaperWidth', {'paperWidthMm': width});
 
   Future<void> write(List<int> bytes) =>
-      _method.invokeMethod('write', {
-        'bytes': Uint8List.fromList(bytes),
-      });
+      _method.invokeMethod('write', {'bytes': Uint8List.fromList(bytes)});
 
-  Future<List<String>> renderPdf(String path) async {
+  Future<List<String>> renderPdf(String path, {int widthDots = 576}) async {
     final pages = await _method.invokeMethod<List<dynamic>>(
       'renderPdf',
-      {'path': path},
+      {'path': path, 'widthDots': widthDots},
     );
     return (pages ?? []).map((page) => page.toString()).toList();
   }
