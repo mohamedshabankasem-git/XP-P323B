@@ -140,7 +140,7 @@ class RasterPrint {
               ? TextAlign.right
               : TextAlign.center,
     );
-    painter.layout(maxWidth: widthDots.toDouble());
+    painter.layout(maxWidth: (widthDots - 16).toDouble());
 
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeight) {
@@ -150,12 +150,7 @@ class RasterPrint {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawColor(Colors.white, BlendMode.src);
-    final horizontalOffset = alignment == 'left'
-        ? 8.0
-        : alignment == 'right'
-            ? (widthDots - painter.width - 8).clamp(0.0, widthDots.toDouble())
-            : ((widthDots - painter.width) / 2).clamp(0.0, widthDots.toDouble());
-    painter.paint(canvas, Offset(horizontalOffset, 8));
+    painter.paint(canvas, const Offset(8, 8));
     final picture = recorder.endRecording();
     final rendered = await picture.toImage(widthDots, height);
     final byteData = await rendered.toByteData(
