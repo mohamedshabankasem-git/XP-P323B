@@ -226,7 +226,7 @@ class _HomeState extends State<Home> {
           for (final pagePath in pages) {
             final bytes = await File(pagePath).readAsBytes();
             await bridge.write(
-              RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots),
+              RasterPrint.imageToEscPos(bytes, maxWidth: printWidthDots, alignment: printAlignment),
             );
             printed++;
           }
