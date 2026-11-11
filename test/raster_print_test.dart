@@ -20,6 +20,21 @@ void main() {
     expect(command.sublist(command.length - 2), <int>[0x0A, 0x0A]);
   });
 
+  test('respects a narrower configured paper width', () {
+    final source = img.Image(width: 16, height: 2);
+    for (var y = 0; y < 2; y++) {
+      for (var x = 0; x < 16; x++) {
+        source.setPixelRgb(x, y, 0, 0, 0);
+      }
+    }
+    final raster = RasterPrint.imageToRaster(
+      img.encodePng(source),
+      maxWidth: 8,
+    );
+    expect(raster.widthBytes, 1);
+    expect(raster.height, 1);
+  });
+
   test('rejects an invalid image payload', () {
     expect(
       () => RasterPrint.imageToEscPos(<int>[1, 2, 3]),
