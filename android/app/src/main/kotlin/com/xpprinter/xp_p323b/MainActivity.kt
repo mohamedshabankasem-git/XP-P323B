@@ -70,11 +70,25 @@ class MainActivity : FlutterActivity() {
             try {
                 when (call.method) {
                     "discoverDevices" -> result.success(discover())
+                    "connectionStatus" -> result.success(connectionStatus())
+                    "restoreConnection" -> result.success(restoreConnection())
+                    "getSettings" -> result.success(
+                        mapOf("paperWidthMm" to getSharedPreferences("printer", MODE_PRIVATE)
+                            .getInt("paperWidthMm", 80))
+                    )
+                    "setPaperWidth" -> {
+                        val width = call.argument<Int>("paperWidthMm") ?: 80
+                        require(width == 58 || width == 80) { "Unsupported paper width" }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit()
+                            .putInt("paperWidthMm", width).apply()
+                        result.success(true)
+                    }
                     "connect" -> {
                         val transport = call.argument<String>("transport") ?: "bluetooth"
                         val address = call.argument<String>("address") ?: error("Missing device")
-                        if (transport == "usb") connectUsb(address) else connectBt(address)
-                        result.success(true)
+                        val name = call.argument<String>("name") ?: "XP Printer"
+                        if (transport == "usb") connectUsb(address, name) else connectBt(address, name)
+                        result.success(connectionStatus())
                     }
                     "write" -> {
                         val bytes = call.argument<ByteArray>("bytes") ?: error("Missing bytes")
@@ -114,7 +128,6 @@ class MainActivity : FlutterActivity() {
                     sink = null
                 }
             })
-        receiveShare(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -167,7 +180,7 @@ class MainActivity : FlutterActivity() {
         sink?.success(
             mapOf(
                 "items" to files,
-                "text" to intent.getStringExtra(Intent.EXTRA_TEXT),
+                "text" to intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
             ),
         )
     }
@@ -275,7 +288,40 @@ class MainActivity : FlutterActivity() {
         return granted
     }
 
-    private fun connectBt(address: String) {
+    private fun saveLastPrinter(transport: String, address: String, name: String) {
+        getSharedPreferences("printer", MODE_PRIVATE).edit()
+            .putString("lastTransport", transport)
+            .putString("lastAddress", address)
+            .putString("lastName", name)
+            .apply()
+    }
+
+    private fun connectionStatus(): Map<String, Any?> {
+        val connected = (bt?.isConnected == true) || (usb != null)
+        val prefs = getSharedPreferences("printer", MODE_PRIVATE)
+        return mapOf(
+            "connected" to connected,
+            "name" to (prefs.getString("lastName", "XP Printer") ?: "XP Printer"),
+            "address" to (prefs.getString("lastAddress", "") ?: ""),
+            "transport" to (prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"),
+        )
+    }
+
+    private fun restoreConnection(): Map<String, Any?> {
+        if ((bt?.isConnected == true) || usb != null) return connectionStatus()
+        val prefs = getSharedPreferences("printer", MODE_PRIVATE)
+        val address = prefs.getString("lastAddress", null) ?: return connectionStatus()
+        val transport = prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"
+        val name = prefs.getString("lastName", "XP Printer") ?: "XP Printer"
+        try {
+            if (transport == "usb") connectUsb(address, name) else connectBt(address, name)
+        } catch (_: Exception) {
+            // Keep the saved printer so the user can retry after granting permissions.
+        }
+        return connectionStatus()
+    }
+
+    private fun connectBt(address: String, name: String) {
         check(btPermission()) { "Bluetooth permission requested; allow it then retry" }
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: error("Bluetooth unavailable")
         adapter.cancelDiscovery()
@@ -286,9 +332,11 @@ class MainActivity : FlutterActivity() {
         usb?.close()
         bt = socket
         usb = null
+        endpoint = null
+        saveLastPrinter("bluetooth", address, name)
     }
 
-    private fun connectUsb(id: String) {
+    private fun connectUsb(id: String, name: String) {
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
         val device = manager.deviceList.values.firstOrNull {
             it.deviceId.toString() == id
@@ -321,6 +369,7 @@ class MainActivity : FlutterActivity() {
                     bt = null
                     usb = connection
                     endpoint = usbEndpoint
+                    saveLastPrinter("usb", id, name)
                     return
                 }
             }
