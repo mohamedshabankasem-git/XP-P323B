@@ -97,9 +97,10 @@ class MainActivity : FlutterActivity() {
                     }
                     "renderPdf" -> {
                         val path = call.argument<String>("path") ?: error("Missing PDF path")
+                        val widthDots = call.argument<Int>("widthDots") ?: 576
                         Thread {
                             try {
-                                val pages = renderPdfPages(path)
+                                val pages = renderPdfPages(path, widthDots)
                                 runOnUiThread { result.success(pages) }
                             } catch (e: Exception) {
                                 runOnUiThread {
@@ -185,7 +186,7 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun renderPdfPages(path: String): List<String> {
+    private fun renderPdfPages(path: String, widthDots: Int): List<String> {
         val pdfFile = File(path)
         require(pdfFile.isFile) { "PDF file not found" }
         val descriptor = ParcelFileDescriptor.open(
@@ -201,7 +202,7 @@ class MainActivity : FlutterActivity() {
             for (index in 0 until renderer.pageCount) {
                 val page = renderer.openPage(index)
                 try {
-                    val targetWidth = 576
+                    val targetWidth = widthDots.coerceIn(384, 576)
                     val scale = targetWidth.toFloat() / page.width.toFloat()
                     val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
                     val bitmap = Bitmap.createBitmap(
