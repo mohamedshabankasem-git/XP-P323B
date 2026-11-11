@@ -75,10 +75,12 @@ class RasterPrint {
   static List<int> imageToEscPos(
     List<int> encodedImage, {
     int threshold = 160,
+    int maxWidth = maxWidthDots,
   }) {
     final raster = imageToRaster(
       encodedImage,
       threshold: threshold,
+      maxWidth: maxWidth,
     );
     return <int>[
       0x1B, 0x40,
@@ -143,8 +145,13 @@ class RasterPrint {
   static Future<List<int>> textToEscPos(
     String text, {
     int fontSize = 28,
+    int widthDots = maxWidthDots,
   }) async {
-    final png = await textToPng(text, fontSize: fontSize);
-    return imageToEscPos(png);
+    final png = await textToPng(
+      text,
+      fontSize: fontSize,
+      widthDots: widthDots,
+    );
+    return imageToEscPos(png, maxWidth: widthDots);
   }
 }
