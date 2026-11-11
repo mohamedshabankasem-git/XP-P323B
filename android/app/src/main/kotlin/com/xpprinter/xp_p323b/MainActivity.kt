@@ -110,6 +110,30 @@ class MainActivity : FlutterActivity() {
                         writeData(bytes)
                         result.success(true)
                     }
+                    "pdfPageCount" -> {
+                        val path = call.argument<String>("path") ?: error("Missing PDF path")
+                        Thread {
+                            try {
+                                val count = getPdfPageCount(path)
+                                runOnUiThread { result.success(count) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("PDF_COUNT", e.message, null) }
+                            }
+                        }.start()
+                    }
+                    "renderPdfPage" -> {
+                        val path = call.argument<String>("path") ?: error("Missing PDF path")
+                        val pageIndex = call.argument<Int>("pageIndex") ?: 0
+                        val widthDots = call.argument<Int>("widthDots") ?: 576
+                        Thread {
+                            try {
+                                val pagePath = renderPdfPage(path, pageIndex, widthDots)
+                                runOnUiThread { result.success(pagePath) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("PDF_PAGE", e.message, null) }
+                            }
+                        }.start()
+                    }
                     "renderPdf" -> {
                         val path = call.argument<String>("path") ?: error("Missing PDF path")
                         val widthDots = call.argument<Int>("widthDots") ?: 576
@@ -208,6 +232,79 @@ class MainActivity : FlutterActivity() {
             eventSink.success(payload)
         } else {
             pendingShare = payload
+        }
+    }
+
+    private fun getPdfPageCount(path: String): Int {
+        val pdfFile = File(path)
+        require(pdfFile.isFile) { "PDF file not found" }
+        val descriptor = ParcelFileDescriptor.open(
+            pdfFile,
+            ParcelFileDescriptor.MODE_READ_ONLY,
+        )
+        val renderer = PdfRenderer(descriptor)
+        return try {
+            require(renderer.pageCount in 1..40) {
+                "PDF must contain between 1 and 40 pages"
+            }
+            renderer.pageCount
+        } finally {
+            renderer.close()
+            descriptor.close()
+        }
+    }
+
+    private fun renderPdfPage(path: String, pageIndex: Int, widthDots: Int): String {
+        val pdfFile = File(path)
+        require(pdfFile.isFile) { "PDF file not found" }
+        val descriptor = ParcelFileDescriptor.open(
+            pdfFile,
+            ParcelFileDescriptor.MODE_READ_ONLY,
+        )
+        val renderer = PdfRenderer(descriptor)
+        try {
+            require(renderer.pageCount in 1..40) {
+                "PDF must contain between 1 and 40 pages"
+            }
+            require(pageIndex in 0 until renderer.pageCount) { "Invalid PDF page index" }
+            val page = renderer.openPage(pageIndex)
+            try {
+                val targetWidth = widthDots.coerceIn(384, 576)
+                val scale = targetWidth.toFloat() / page.width.toFloat()
+                val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
+                val bitmap = Bitmap.createBitmap(
+                    targetWidth,
+                    targetHeight,
+                    Bitmap.Config.ARGB_8888,
+                )
+                try {
+                    bitmap.eraseColor(Color.WHITE)
+                    val transform = Matrix().apply { setScale(scale, scale) }
+                    page.render(
+                        bitmap,
+                        null,
+                        transform,
+                        PdfRenderer.Page.RENDER_MODE_FOR_PRINT,
+                    )
+                    val output = File(
+                        cacheDir,
+                        "pdf_page_${System.currentTimeMillis()}_${pageIndex}.png",
+                    )
+                    output.outputStream().use { stream ->
+                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                            "Could not encode PDF page"
+                        }
+                    }
+                    return output.absolutePath
+                } finally {
+                    bitmap.recycle()
+                }
+            } finally {
+                page.close()
+            }
+        } finally {
+            renderer.close()
+            descriptor.close()
         }
     }
 
@@ -412,8 +509,15 @@ class MainActivity : FlutterActivity() {
     private fun writeData(bytes: ByteArray) {
         val socket = bt
         if (socket != null && socket.isConnected) {
-            socket.outputStream.write(bytes)
-            socket.outputStream.flush()
+            val output = socket.outputStream
+            // Keep each Bluetooth write bounded; flush once to avoid per-chunk latency.
+            var offset = 0
+            while (offset < bytes.size) {
+                val end = minOf(offset + 16_384, bytes.size)
+                output.write(bytes, offset, end - offset)
+                offset = end
+            }
+            output.flush()
             return
         }
 
