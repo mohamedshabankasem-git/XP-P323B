@@ -4,6 +4,8 @@ on:
     branches: [main, feature/flutter-foundation]
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -19,3 +21,11 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xp-p323b-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
