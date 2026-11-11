@@ -4,14 +4,27 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
-/// Converts shared images and Flutter-rendered text to ESC/POS raster data.
-/// XP-P323B has a 72 mm / 576-dot maximum print width at 203 DPI.
+class ThermalRaster {
+  const ThermalRaster({
+    required this.widthBytes,
+    required this.height,
+    required this.data,
+  });
+
+  final int widthBytes;
+  final int height;
+  final List<int> data;
+}
+
+/// Converts images and Flutter-rendered RTL text to monochrome printer data.
 class RasterPrint {
   static const int maxWidthDots = 576;
   static const int maxHeightDots = 4096;
 
-  static List<int> imageToEscPos(
+  static ThermalRaster imageToRaster(
     List<int> encodedImage, {
+    int maxWidth = maxWidthDots,
+    int maxHeight = maxHeightDots,
     int threshold = 160,
   }) {
     final decoded = img.decodeImage(encodedImage);
@@ -21,10 +34,7 @@ class RasterPrint {
 
     final scale = math.min(
       1.0,
-      math.min(
-        maxWidthDots / decoded.width,
-        maxHeightDots / decoded.height,
-      ),
+      math.min(maxWidth / decoded.width, maxHeight / decoded.height),
     );
     final width = math.max(1, (decoded.width * scale).floor()).toInt();
     final height = math.max(1, (decoded.height * scale).floor()).toInt();
@@ -54,21 +64,37 @@ class RasterPrint {
       }
     }
 
-    // GS v 0: xL, xH are bytes per row; yL, yH are raster rows.
+    return ThermalRaster(
+      widthBytes: bytesPerRow,
+      height: raster.height,
+      data: pixels,
+    );
+  }
+
+  static List<int> imageToEscPos(
+    List<int> encodedImage, {
+    int threshold = 160,
+  }) {
+    final raster = imageToRaster(
+      encodedImage,
+      threshold: threshold,
+    );
     return <int>[
       0x1B, 0x40,
       0x1D, 0x76, 0x30, 0x00,
-      bytesPerRow & 0xFF,
-      (bytesPerRow >> 8) & 0xFF,
+      raster.widthBytes & 0xFF,
+      (raster.widthBytes >> 8) & 0xFF,
       raster.height & 0xFF,
       (raster.height >> 8) & 0xFF,
-      ...pixels,
+      ...raster.data,
       0x0A, 0x0A,
     ];
   }
 
-  static Future<List<int>> textToEscPos(
+  static Future<List<int>> textToPng(
     String text, {
+    int widthDots = maxWidthDots,
+    int maxHeightDots = maxHeightDots,
     int fontSize = 28,
   }) async {
     final content = text.trim();
@@ -88,9 +114,8 @@ class RasterPrint {
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.right,
     );
-    painter.layout(maxWidth: maxWidthDots.toDouble());
+    painter.layout(maxWidth: widthDots.toDouble());
 
-    final width = maxWidthDots;
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeightDots) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
@@ -101,7 +126,7 @@ class RasterPrint {
     canvas.drawColor(Colors.white, BlendMode.src);
     painter.paint(canvas, const Offset(8, 8));
     final picture = recorder.endRecording();
-    final rendered = await picture.toImage(width, height);
+    final rendered = await picture.toImage(widthDots, height);
     final byteData = await rendered.toByteData(
       format: ui.ImageByteFormat.png,
     );
@@ -111,6 +136,14 @@ class RasterPrint {
     if (byteData == null) {
       throw StateError('تعذر تجهيز النص للطباعة');
     }
-    return imageToEscPos(byteData.buffer.asUint8List());
+    return byteData.buffer.asUint8List();
+  }
+
+  static Future<List<int>> textToEscPos(
+    String text, {
+    int fontSize = 28,
+  }) async {
+    final png = await textToPng(text, fontSize: fontSize);
+    return imageToEscPos(png);
   }
 }
