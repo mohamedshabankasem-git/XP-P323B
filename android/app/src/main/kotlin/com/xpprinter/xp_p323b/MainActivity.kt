@@ -6,6 +6,10 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.content.*
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.pdf.PdfRenderer
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
@@ -13,6 +17,7 @@ import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import androidx.core.app.ActivityCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -35,8 +40,15 @@ class MainActivity : FlutterActivity() {
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == usbAction) {
-                method?.invokeMethod("usbPermissionResult",
-                    mapOf("granted" to intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)))
+                method?.invokeMethod(
+                    "usbPermissionResult",
+                    mapOf(
+                        "granted" to intent.getBooleanExtra(
+                            UsbManager.EXTRA_PERMISSION_GRANTED,
+                            false,
+                        ),
+                    ),
+                )
             }
         }
     }
@@ -44,8 +56,11 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val filter = IntentFilter(usbAction)
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        else registerReceiver(usbReceiver, filter)
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(usbReceiver, filter)
+        }
     }
 
     override fun configureFlutterEngine(engine: FlutterEngine) {
@@ -63,94 +78,249 @@ class MainActivity : FlutterActivity() {
                     }
                     "write" -> {
                         val bytes = call.argument<ByteArray>("bytes") ?: error("Missing bytes")
-                        writeData(bytes); result.success(true)
+                        writeData(bytes)
+                        result.success(true)
+                    }
+                    "renderPdf" -> {
+                        val path = call.argument<String>("path") ?: error("Missing PDF path")
+                        Thread {
+                            try {
+                                val pages = renderPdfPages(path)
+                                runOnUiThread { result.success(pages) }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    result.error("PDF_RENDER", e.message, null)
+                                }
+                            }
+                        }.start()
                     }
                     else -> result.notImplemented()
                 }
-            } catch (e: Exception) { result.error("PRINTER", e.message, null) }
+            } catch (e: Exception) {
+                result.error("PRINTER", e.message, null)
+            }
         }
-        EventChannel(engine.dartExecutor.binaryMessenger, shareName).setStreamHandler(object : EventChannel.StreamHandler {
-            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) { sink = events; receiveShare(intent) }
-            override fun onCancel(arguments: Any?) { sink = null }
-        })
+        EventChannel(engine.dartExecutor.binaryMessenger, shareName)
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(
+                    arguments: Any?,
+                    events: EventChannel.EventSink?,
+                ) {
+                    sink = events
+                    receiveShare(intent)
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    sink = null
+                }
+            })
         receiveShare(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent); setIntent(intent); receiveShare(intent)
+        super.onNewIntent(intent)
+        setIntent(intent)
+        receiveShare(intent)
     }
 
-    private fun receiveShare(i: Intent?) {
-        if (i == null || (i.action != Intent.ACTION_SEND && i.action != Intent.ACTION_SEND_MULTIPLE)) return
+    private fun receiveShare(intent: Intent?) {
+        if (intent == null ||
+            (intent.action != Intent.ACTION_SEND &&
+                intent.action != Intent.ACTION_SEND_MULTIPLE)
+        ) return
+
         val uris = mutableListOf<Uri>()
-        if (i.action == Intent.ACTION_SEND_MULTIPLE) {
-            val list: ArrayList<Uri>? = if (Build.VERSION.SDK_INT >= 33)
-                i.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            else @Suppress("DEPRECATION") i.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val list: ArrayList<Uri>? = if (Build.VERSION.SDK_INT >= 33) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+            }
             if (list != null) uris.addAll(list)
         } else {
-            val uri: Uri? = if (Build.VERSION.SDK_INT >= 33)
-                i.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            else @Suppress("DEPRECATION") i.getParcelableExtra(Intent.EXTRA_STREAM)
+            val uri: Uri? = if (Build.VERSION.SDK_INT >= 33) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            }
             if (uri != null) uris.add(uri)
         }
+
         val files = uris.mapIndexed { index, uri ->
             val file = File(cacheDir, "shared_" + System.currentTimeMillis() + "_" + index)
             contentResolver.openInputStream(uri).use { input ->
                 requireNotNull(input) { "Cannot read shared URI" }
                 file.outputStream().use { output -> input.copyTo(output) }
             }
-            mapOf("name" to file.name, "path" to file.absolutePath,
-                "mimeType" to (contentResolver.getType(uri) ?: i.type ?: "application/octet-stream"))
+            mapOf(
+                "name" to file.name,
+                "path" to file.absolutePath,
+                "mimeType" to (
+                    contentResolver.getType(uri)
+                        ?: intent.type
+                        ?: "application/octet-stream"
+                    ),
+            )
         }
-        sink?.success(mapOf("items" to files, "text" to i.getStringExtra(Intent.EXTRA_TEXT)))
+        sink?.success(
+            mapOf(
+                "items" to files,
+                "text" to intent.getStringExtra(Intent.EXTRA_TEXT),
+            ),
+        )
+    }
+
+    private fun renderPdfPages(path: String): List<String> {
+        val pdfFile = File(path)
+        require(pdfFile.isFile) { "PDF file not found" }
+        val descriptor = ParcelFileDescriptor.open(
+            pdfFile,
+            ParcelFileDescriptor.MODE_READ_ONLY,
+        )
+        val renderer = PdfRenderer(descriptor)
+        val outputPaths = mutableListOf<String>()
+        try {
+            require(renderer.pageCount in 1..40) {
+                "PDF must contain between 1 and 40 pages"
+            }
+            for (index in 0 until renderer.pageCount) {
+                val page = renderer.openPage(index)
+                try {
+                    val targetWidth = 576
+                    val scale = targetWidth.toFloat() / page.width.toFloat()
+                    val targetHeight = (page.height * scale).toInt().coerceAtLeast(1)
+                    val bitmap = Bitmap.createBitmap(
+                        targetWidth,
+                        targetHeight,
+                        Bitmap.Config.ARGB_8888,
+                    )
+                    try {
+                        bitmap.eraseColor(Color.WHITE)
+                        val transform = Matrix().apply { setScale(scale, scale) }
+                        page.render(
+                            bitmap,
+                            null,
+                            transform,
+                            PdfRenderer.Page.RENDER_MODE_FOR_PRINT,
+                        )
+                        val output = File(
+                            cacheDir,
+                            "pdf_page_" + System.currentTimeMillis() + "_" + index + ".png",
+                        )
+                        output.outputStream().use { stream ->
+                            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                                "Could not encode PDF page"
+                            }
+                        }
+                        outputPaths.add(output.absolutePath)
+                    } finally {
+                        bitmap.recycle()
+                    }
+                } finally {
+                    page.close()
+                }
+            }
+        } finally {
+            renderer.close()
+            descriptor.close()
+        }
+        return outputPaths
     }
 
     private fun discover(): List<Map<String, String>> {
-        val out = mutableListOf<Map<String, String>>()
+        val output = mutableListOf<Map<String, String>>()
         val adapter = BluetoothAdapter.getDefaultAdapter()
-        if (adapter != null && btPermission()) adapter.bondedDevices.forEach {
-            out.add(mapOf("name" to (it.name ?: "Bluetooth printer"), "address" to it.address, "transport" to "bluetooth"))
+        if (adapter != null && btPermission()) {
+            adapter.bondedDevices.forEach {
+                output.add(
+                    mapOf(
+                        "name" to (it.name ?: "Bluetooth printer"),
+                        "address" to it.address,
+                        "transport" to "bluetooth",
+                    ),
+                )
+            }
         }
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
         manager.deviceList.values.forEach {
-            out.add(mapOf("name" to (it.productName ?: "USB printer"), "address" to it.deviceId.toString(), "transport" to "usb"))
+            output.add(
+                mapOf(
+                    "name" to (it.productName ?: "USB printer"),
+                    "address" to it.deviceId.toString(),
+                    "transport" to "usb",
+                ),
+            )
         }
-        return out
+        return output
     }
 
     private fun btPermission(): Boolean {
         if (Build.VERSION.SDK_INT < 31) return true
-        val ok = ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-        if (!ok) ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN), 702)
-        return ok
+        val granted = ActivityCompat.checkSelfPermission(
+            this,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                ),
+                702,
+            )
+        }
+        return granted
     }
 
     private fun connectBt(address: String) {
         check(btPermission()) { "Bluetooth permission requested; allow it then retry" }
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: error("Bluetooth unavailable")
         adapter.cancelDiscovery()
-        val socket = adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(spp)
+        val socket = adapter.getRemoteDevice(address)
+            .createRfcommSocketToServiceRecord(spp)
         socket.connect()
-        bt?.close(); usb?.close(); bt = socket; usb = null
+        bt?.close()
+        usb?.close()
+        bt = socket
+        usb = null
     }
 
     private fun connectUsb(id: String) {
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
-        val device = manager.deviceList.values.firstOrNull { it.deviceId.toString() == id } ?: error("USB printer not found")
+        val device = manager.deviceList.values.firstOrNull {
+            it.deviceId.toString() == id
+        } ?: error("USB printer not found")
+
         if (!manager.hasPermission(device)) {
-            val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
-            manager.requestPermission(device, PendingIntent.getBroadcast(this, 0, Intent(usbAction), flags))
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+            manager.requestPermission(
+                device,
+                PendingIntent.getBroadcast(this, 0, Intent(usbAction), flags),
+            )
             error("USB permission requested. Allow access and tap Connect again.")
         }
+
         for (index in 0 until device.interfaceCount) {
             val intf = device.getInterface(index)
-            for (e in 0 until intf.endpointCount) {
-                val ep = intf.getEndpoint(e)
-                if (ep.direction == UsbConstants.USB_DIR_OUT && ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK) {
-                    val connection = manager.openDevice(device) ?: error("Cannot open USB device")
-                    check(connection.claimInterface(intf, true)) { "Cannot claim USB interface" }
-                    bt?.close(); usb?.close(); bt = null; usb = connection; endpoint = ep
+            for (endpointIndex in 0 until intf.endpointCount) {
+                val usbEndpoint = intf.getEndpoint(endpointIndex)
+                if (usbEndpoint.direction == UsbConstants.USB_DIR_OUT &&
+                    usbEndpoint.type == UsbConstants.USB_ENDPOINT_XFER_BULK
+                ) {
+                    val connection = manager.openDevice(device)
+                        ?: error("Cannot open USB device")
+                    check(connection.claimInterface(intf, true)) {
+                        "Cannot claim USB interface"
+                    }
+                    bt?.close()
+                    usb?.close()
+                    bt = null
+                    usb = connection
+                    endpoint = usbEndpoint
                     return
                 }
             }
@@ -161,22 +331,40 @@ class MainActivity : FlutterActivity() {
     private fun writeData(bytes: ByteArray) {
         val socket = bt
         if (socket != null && socket.isConnected) {
-            socket.outputStream.write(bytes); socket.outputStream.flush(); return
+            socket.outputStream.write(bytes)
+            socket.outputStream.flush()
+            return
         }
+
         val connection = usb ?: error("Printer is not connected")
-        val ep = endpoint ?: error("USB output endpoint missing")
+        val usbEndpoint = endpoint ?: error("USB output endpoint missing")
         var offset = 0
         while (offset < bytes.size) {
             val part = bytes.copyOfRange(offset, minOf(offset + 16000, bytes.size))
-            val count = connection.bulkTransfer(ep, part, part.size, 5000)
-            check(count > 0) { "USB transfer failed" }; offset += count
+            val count = connection.bulkTransfer(
+                usbEndpoint,
+                part,
+                part.size,
+                5000,
+            )
+            check(count > 0) { "USB transfer failed" }
+            offset += count
         }
     }
 
     override fun onDestroy() {
-        try { unregisterReceiver(usbReceiver) } catch (_: Exception) {}
-        try { bt?.close() } catch (_: Exception) {}
-        try { usb?.close() } catch (_: Exception) {}
+        try {
+            unregisterReceiver(usbReceiver)
+        } catch (_: Exception) {
+        }
+        try {
+            bt?.close()
+        } catch (_: Exception) {
+        }
+        try {
+            usb?.close()
+        } catch (_: Exception) {
+        }
         super.onDestroy()
     }
 }
