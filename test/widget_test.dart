@@ -7,10 +7,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const printerChannel = MethodChannel('xp_p323b/printer');
+  const shareChannel = 'xp_p323b/share';
 
   setUp(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(printerChannel, (call) async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(printerChannel, (call) async {
       switch (call.method) {
         case 'discoverDevices':
           return <dynamic>[];
@@ -22,15 +24,25 @@ void main() {
             'paperWidthMm': 80,
             'printAlignment': 'center',
           };
+        case 'setPrintAlignment':
+        case 'setPaperWidth':
+          return true;
         default:
           return null;
       }
     });
+    messenger.setMockMessageHandler(
+      shareChannel,
+      (message) async =>
+          const StandardMethodCodec().encodeSuccessEnvelope(null),
+    );
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(printerChannel, null);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(printerChannel, null);
+    messenger.setMockMessageHandler(shareChannel, null);
   });
 
   testWidgets('XP Printer home screen and print settings render',
@@ -57,5 +69,9 @@ void main() {
     expect(find.text('يمين'), findsOneWidget);
     expect(find.text('يسار'), findsOneWidget);
     expect(find.text('منتصف'), findsWidgets);
+
+    await tester.tap(find.text('يسار').last);
+    await tester.pumpAndSettle();
+    expect(find.text('يسار'), findsOneWidget);
   });
 }
