@@ -101,10 +101,12 @@ class _HomeState extends State<Home> {
   Future<void> _loadSettings() async {
     try {
       final settings = await bridge.settings();
-      if (mounted) setState(() {
-        paperWidthMm = settings['paperWidthMm'] as int;
-        printAlignment = settings['printAlignment'] as String;
-      });
+      if (mounted) {
+        setState(() {
+          paperWidthMm = settings['paperWidthMm'] as int;
+          printAlignment = settings['printAlignment'] as String;
+        });
+      }
     } catch (error) {
       toast('تعذر تحميل إعدادات الورق: $error');
     }
@@ -421,7 +423,7 @@ class _HomeState extends State<Home> {
           const Text('محاذاة الطباعة'),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: printAlignment,
+            initialValue: printAlignment,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               helperText: 'تُطبّق على النصوص والصور والملفات المشتركة',
