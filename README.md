@@ -26,7 +26,7 @@ flutter test
 لبناء نسخة Release صغيرة الحجم، مقسمة حسب معمارية المعالج:
 
 ```sh
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm
 ```
 
 ستجد ملفات APK في:
@@ -37,7 +37,7 @@ build/app/outputs/flutter-apk/
 
 - `app-arm64-v8a-release.apk`: لمعظم الهواتف الحديثة 64-bit.
 - `app-armeabi-v7a-release.apk`: للأجهزة القديمة 32-bit.
-- `app-x86_64-release.apk`: لأجهزة Android بمعمارية x86_64.
+- لن يتم إنشاء نسخة x86_64؛ البناء يقتصر على ARM64 وARMv7.
 
 للتطوير والاختبار فقط يمكن استخدام:
 
@@ -47,7 +47,7 @@ flutter build apk --debug
 
 ## ملاحظات الاتصال والطباعة
 
-- يجب إقران طابعة Bluetooth من إعدادات Android أولاً، ثم منح صلاحية Bluetooth للتطبيق.
+- يجب إقران طابعة Bluetooth من إعدادات Android أولاً، ثم منح صلاحية Bluetooth للتطبيق. إذا كان Bluetooth مغلقاً، يطلب التطبيق تشغيله من نافذة تأكيد Android النظامية؛ لا يفعّله بصمت.
 - الاقتران وحده لا يعني وجود جلسة طباعة نشطة؛ يجب الاتصال بالطابعة من قسم **إدارة الطابعة** داخل الإعدادات.
 - USB يتطلب هاتفاً يدعم USB Host/OTG وموافقة Android على صلاحية USB.
 - إذا وصلت مشاركة دون اتصال بالطابعة، تبقى العناصر في صفحة المشاركة ويمكن إعادة طباعتها بعد الاتصال.
