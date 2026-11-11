@@ -68,9 +68,11 @@ void main() {
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
 
-    expect(find.text('يمين'), findsOneWidget);
+    // The selected value remains visible behind the open popup, so the
+    // selected label can appear twice while the menu is open.
+    expect(find.text('يمين'), findsWidgets);
     expect(find.text('يسار'), findsOneWidget);
-    expect(find.text('منتصف'), findsWidgets);
+    expect(find.text('منتصف'), findsOneWidget);
 
     await tester.tap(find.text('يسار').last);
     await tester.pumpAndSettle();
