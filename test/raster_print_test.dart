@@ -17,9 +17,10 @@ void main() {
       command.take(10).toList(),
       <int>[0x1B, 0x40, 0x1D, 0x76, 0x30, 0x00, 72, 0, 1, 0],
     );
-    expect(command[10 + 35], 0xFF);
+    expect(command[10 + 35], 0x0F);
+    expect(command[10 + 36], 0xF0);
     expect(command.sublist(10, 10 + 35).every((byte) => byte == 0), isTrue);
-    expect(command.sublist(10 + 36, 10 + 72).every((byte) => byte == 0), isTrue);
+    expect(command.sublist(10 + 37, 10 + 72).every((byte) => byte == 0), isTrue);
     expect(command.sublist(command.length - 2), <int>[0x0A, 0x0A]);
   });
 
