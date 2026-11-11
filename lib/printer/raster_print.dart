@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -27,7 +28,7 @@ class RasterPrint {
     int maxHeight = maxHeightDots,
     int threshold = 160,
   }) {
-    final decoded = img.decodeImage(encodedImage);
+    final decoded = img.decodeImage(Uint8List.fromList(encodedImage));
     if (decoded == null) {
       throw const FormatException('صيغة الصورة غير مدعومة أو الملف تالف');
     }
