@@ -131,6 +131,35 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> printLabel() async {
+    try {
+      final bytes = await Tspl.labelRaster(
+        name: product.text,
+        price: price.text,
+        barcode: barcode.text,
+      );
+      await printBytes(bytes);
+    } catch (error) {
+      toast('تعذر تجهيز الملصق: $error');
+    }
+  }
+
+  Future<void> printInvoice() async {
+    final text = [
+      'فاتورة رقم: ${invoice.text}',
+      '------------------------------',
+      'الصنف: ${product.text}',
+      'السعر: ${price.text}',
+      '------------------------------',
+      'شكراً لزيارتكم',
+    ].join('\\n');
+    try {
+      await printBytes(await RasterPrint.textToEscPos(text, fontSize: 24));
+    } catch (error) {
+      toast('تعذر تجهيز الفاتورة: $error');
+    }
+  }
+
   Future<void> printShared() async {
     if (selected == null) {
       setState(() => tab = 2);
@@ -227,19 +256,13 @@ class _HomeState extends State<Home> {
                   field(price, 'السعر'),
                   field(barcode, 'الباركود'),
                   FilledButton.icon(
-                    onPressed: () => printBytes(
-                      Tspl.label(
-                        name: product.text,
-                        price: price.text,
-                        barcode: barcode.text,
-                      ),
-                    ),
+                    onPressed: printLabel,
                     icon: const Icon(Icons.print),
                     label: const Text('طباعة ملصق تجريبي'),
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'أوامر TSPL أولية؛ تشكيل العربية ومعايرة الملصق في المرحلة التالية.',
+                    'اسم المنتج والسعر يُرسمان كصورة عربية عبر Flutter ثم يطبعان بأمر TSPL BITMAP، والباركود بأمر TSPL.',
                   ),
                 ],
               ),
@@ -253,19 +276,13 @@ class _HomeState extends State<Home> {
                   field(product, 'الصنف'),
                   field(price, 'السعر'),
                   FilledButton.icon(
-                    onPressed: () => printBytes(
-                      EscPos.invoice(
-                        number: invoice.text,
-                        item: product.text,
-                        price: price.text,
-                      ),
-                    ),
+                    onPressed: printInvoice,
                     icon: const Icon(Icons.receipt_long),
                     label: const Text('طباعة فاتورة اختبار'),
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'النسخة الإنتاجية ستستخدم تشكيل RTL وتحويل الفاتورة إلى صورة حرارية.',
+                    'الفاتورة تُرسم كنص عربي RTL إلى صورة حرارية ثم تُرسل بأمر ESC/POS raster.',
                   ),
                 ],
               ),
