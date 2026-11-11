@@ -8,8 +8,8 @@ class Tspl {
   }) {
     String ascii(String value) => value
         .replaceAll('"', "'")
-        .replaceAll(RegExp(r'[^\x20-\x7E]'), '?');
-    final code = barcode.replaceAll(RegExp(r'[^0-9A-Za-z\-.$/+% ]'), '');
+        .replaceAll(RegExp(r'[^ -~]'), '?');
+    final code = barcode.replaceAll(RegExp(r'[^0-9A-Za-z.$/+% -]'), '');
     final commands = [
       'SIZE 50 mm,30 mm',
       'GAP 2 mm,0 mm',
