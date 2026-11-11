@@ -24,6 +24,30 @@ void main() {
     expect(command.sublist(command.length - 2), <int>[0x0A, 0x0A]);
   });
 
+  test('applies left and right image alignment', () {
+    final source = img.Image(width: 8, height: 1);
+    for (var x = 0; x < 8; x++) {
+      source.setPixelRgb(x, 0, 0, 0, 0);
+    }
+    final encoded = img.encodePng(source);
+
+    final left = RasterPrint.imageToEscPos(
+      encoded,
+      maxWidth: 16,
+      alignment: 'left',
+    );
+    final right = RasterPrint.imageToEscPos(
+      encoded,
+      maxWidth: 16,
+      alignment: 'right',
+    );
+
+    expect(left.sublist(6, 10), <int>[2, 0, 1, 0]);
+    expect(left.sublist(10, 12), <int>[0xFF, 0x00]);
+    expect(right.sublist(6, 10), <int>[2, 0, 1, 0]);
+    expect(right.sublist(10, 12), <int>[0x00, 0xFF]);
+  });
+
   test('respects a narrower configured paper width', () {
     final source = img.Image(width: 16, height: 2);
     for (var y = 0; y < 2; y++) {
