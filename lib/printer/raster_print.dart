@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
@@ -32,7 +33,20 @@ class RasterPrint {
     if (decoded == null) {
       throw const FormatException('صيغة الصورة غير مدعومة أو الملف تالف');
     }
+    return _decodedToRaster(
+      decoded,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      threshold: threshold,
+    );
+  }
 
+  static ThermalRaster _decodedToRaster(
+    img.Image decoded, {
+    required int maxWidth,
+    required int maxHeight,
+    required int threshold,
+  }) {
     final scale = math.min(
       1.0,
       math.min(maxWidth / decoded.width, maxHeight / decoded.height),
@@ -50,7 +64,6 @@ class RasterPrint {
 
     final bytesPerRow = (raster.width + 7) ~/ 8;
     final pixels = List<int>.filled(bytesPerRow * raster.height, 0);
-
     for (var y = 0; y < raster.height; y++) {
       for (var x = 0; x < raster.width; x++) {
         final pixel = raster.getPixel(x, y);
@@ -64,7 +77,6 @@ class RasterPrint {
         }
       }
     }
-
     return ThermalRaster(
       widthBytes: bytesPerRow,
       height: raster.height,
@@ -82,11 +94,14 @@ class RasterPrint {
     if (decoded == null) {
       throw const FormatException('صيغة الصورة غير مدعومة أو الملف تالف');
     }
-    final scaled = img.copyResize(
-      decoded,
-      width: math.min(maxWidth, decoded.width),
-      interpolation: img.Interpolation.average,
-    );
+    final scaledWidth = math.min(maxWidth, decoded.width);
+    final scaled = scaledWidth == decoded.width
+        ? decoded
+        : img.copyResize(
+            decoded,
+            width: scaledWidth,
+            interpolation: img.Interpolation.average,
+          );
     final canvas = img.Image(width: maxWidth, height: scaled.height);
     img.fill(canvas, color: img.ColorRgb8(255, 255, 255));
     final offset = alignment == 'left'
@@ -95,10 +110,13 @@ class RasterPrint {
             ? maxWidth - scaled.width
             : (maxWidth - scaled.width) ~/ 2;
     img.compositeImage(canvas, scaled, dstX: offset);
-    final raster = imageToRaster(
-      img.encodePng(canvas),
-      threshold: threshold,
+
+    // Convert the in-memory image directly; avoid PNG encode + second decode.
+    final raster = _decodedToRaster(
+      canvas,
       maxWidth: maxWidth,
+      maxHeight: maxHeightDots,
+      threshold: threshold,
     );
     return <int>[
       0x1B, 0x40,
@@ -112,6 +130,24 @@ class RasterPrint {
     ];
   }
 
+  /// Runs CPU-heavy image decoding and raster conversion off the UI isolate.
+  static Future<List<int>> imageToEscPosAsync(
+    List<int> encodedImage, {
+    int threshold = 160,
+    int maxWidth = maxWidthDots,
+    String alignment = 'center',
+  }) {
+    return compute(_imageToEscPosWorker, <String, Object>{
+      'bytes': Uint8List.fromList(encodedImage),
+      'threshold': threshold,
+      'maxWidth': maxWidth,
+      'alignment': alignment,
+    });
+  }
+
+  static List<int> textToEscPosSyncUnsupported() =>
+      throw UnsupportedError('Use textToEscPos for Flutter text rendering');
+
   static Future<List<int>> textToPng(
     String text, {
     int widthDots = maxWidthDots,
@@ -123,7 +159,6 @@ class RasterPrint {
     if (content.isEmpty) {
       throw ArgumentError('لا يوجد نص للطباعة');
     }
-
     final painter = TextPainter(
       text: TextSpan(
         text: content,
@@ -141,12 +176,10 @@ class RasterPrint {
               : TextAlign.center,
     );
     painter.layout(maxWidth: (widthDots - 16).toDouble());
-
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeight) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
     }
-
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawColor(Colors.white, BlendMode.src);
@@ -158,7 +191,6 @@ class RasterPrint {
     );
     rendered.dispose();
     picture.dispose();
-
     if (byteData == null) {
       throw StateError('تعذر تجهيز النص للطباعة');
     }
@@ -177,6 +209,15 @@ class RasterPrint {
       widthDots: widthDots,
       alignment: alignment,
     );
-    return imageToEscPos(png, maxWidth: widthDots);
+    return imageToEscPosAsync(png, maxWidth: widthDots);
   }
+}
+
+List<int> _imageToEscPosWorker(Map<String, Object> args) {
+  return RasterPrint.imageToEscPos(
+    args['bytes']! as Uint8List,
+    threshold: args['threshold']! as int,
+    maxWidth: args['maxWidth']! as int,
+    alignment: args['alignment']! as String,
+  );
 }
