@@ -33,6 +33,7 @@ class MainActivity : FlutterActivity() {
     private val usbAction get() = packageName + ".USB_PERMISSION"
     private var method: MethodChannel? = null
     private var sink: EventChannel.EventSink? = null
+    private var pendingShare: Map<String, Any?>? = null
     private var bt: BluetoothSocket? = null
     private var usb: UsbDeviceConnection? = null
     private var endpoint: UsbEndpoint? = null
@@ -122,7 +123,13 @@ class MainActivity : FlutterActivity() {
                     events: EventChannel.EventSink?,
                 ) {
                     sink = events
-                    receiveShare(intent)
+                    val pending = pendingShare
+                    if (pending != null) {
+                        events?.success(pending)
+                        pendingShare = null
+                    } else {
+                        receiveShare(intent)
+                    }
                 }
 
                 override fun onCancel(arguments: Any?) {
@@ -178,12 +185,16 @@ class MainActivity : FlutterActivity() {
                     ),
             )
         }
-        sink?.success(
-            mapOf(
-                "items" to files,
-                "text" to intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
-            ),
+        val payload = mapOf(
+            "items" to files,
+            "text" to intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
         )
+        val eventSink = sink
+        if (eventSink != null) {
+            eventSink.success(payload)
+        } else {
+            pendingShare = payload
+        }
     }
 
     private fun renderPdfPages(path: String, widthDots: Int): List<String> {
