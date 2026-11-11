@@ -41,15 +41,14 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build release APKs (split by ABI)
-        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm
+      - name: Build arm64-v8a release APK
+        run: flutter build apk --release --target-platform android-arm64
 
-      - name: Upload release APKs
+      - name: Upload arm64-v8a release APK
         uses: actions/upload-artifact@v4
         with:
-          name: xp-p323b-release-apks
+          name: xp-p323b-arm64-v8a-release
           path: |
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
