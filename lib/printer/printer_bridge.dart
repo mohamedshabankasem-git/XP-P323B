@@ -67,4 +67,31 @@ class PrinterBridge {
     );
     return (pages ?? []).map((page) => page.toString()).toList();
   }
+  Future<int> pdfPageCount(String path) async {
+    final count = await _method.invokeMethod<int>(
+      'pdfPageCount',
+      {'path': path},
+    );
+    return count ?? 0;
+  }
+
+  Future<String> renderPdfPage(
+    String path, {
+    required int pageIndex,
+    int widthDots = 576,
+  }) async {
+    final pagePath = await _method.invokeMethod<String>(
+      'renderPdfPage',
+      {
+        'path': path,
+        'pageIndex': pageIndex,
+        'widthDots': widthDots,
+      },
+    );
+    if (pagePath == null || pagePath.isEmpty) {
+      throw StateError('تعذر تجهيز صفحة PDF للطباعة');
+    }
+    return pagePath;
+  }
+
 }
