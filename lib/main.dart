@@ -397,7 +397,7 @@ class _HomeState extends State<Home> {
           Text('إعدادات الطباعة',
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          const Text('اختر عرض رول الورق المستخدم في طباعة الفواتير والملفات المشتركة.'),
+          const Text('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.'),
           const SizedBox(height: 12),
           RadioGroup<int>(
             groupValue: paperWidthMm,
@@ -423,6 +423,7 @@ class _HomeState extends State<Home> {
           const Text('محاذاة الطباعة'),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
+            key: ValueKey(printAlignment),
             initialValue: printAlignment,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
