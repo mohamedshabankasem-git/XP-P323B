@@ -42,10 +42,10 @@ class _HomeState extends State<Home> {
   String shareStatus = 'لم يتم استقبال مشاركة بعد';
   int tab = 0;
   String transportFilter = 'bluetooth';
-  bool connecting = false;
-  int paperWidthMm = 80;
-  int paperWidthDots = 576;
-  String printAlignment = 'center';
+  String? connectingAddress;
+  int paperWidthMm = 58;
+  int paperWidthDots = 384;
+  String printAlignment = 'left';
   bool busy = false;
   bool printingShare = false;
 
@@ -105,8 +105,8 @@ class _HomeState extends State<Home> {
       final settings = await bridge.settings();
       if (mounted) {
         setState(() {
-          paperWidthMm = settings['paperWidthMm'] as int;
-          paperWidthDots = settings['paperWidthDots'] as int;
+          paperWidthDots = settings['paperWidthDots'] == 576 ? 576 : 384;
+          paperWidthMm = paperWidthDots == 576 ? 80 : 58;
           printAlignment = settings['printAlignment'] as String;
           transportFilter = settings['lastTransport'] as String;
         });
@@ -162,8 +162,8 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> connect(PrinterDevice device) async {
-    if (connecting) return;
-    setState(() => connecting = true);
+    if (connectingAddress != null) return;
+    setState(() => connectingAddress = '${device.transport}:${device.address}');
     try {
       await bridge.connect(device);
       final connected = await ensureConnected();
@@ -177,7 +177,7 @@ class _HomeState extends State<Home> {
       // USB may need the Android permission dialog; refresh after approval.
       await refresh();
     } finally {
-      if (mounted) setState(() => connecting = false);
+      if (mounted) setState(() => connectingAddress = null);
     }
   }
 
@@ -352,7 +352,7 @@ class _HomeState extends State<Home> {
               DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text('Bluetooth')])),
               DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text('USB')])),
             ],
-            onChanged: busy || connecting ? null : (value) { if (value != null) _setTransport(value); },
+            onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
           FilledButton.icon(
             onPressed: busy ? null : refresh,
@@ -366,8 +366,12 @@ class _HomeState extends State<Home> {
                 title: Text(device.name),
                 subtitle: Text(device.address),
                 trailing: TextButton(
-                  onPressed: connecting ? null : () => connect(device),
-                  child: Text(connecting ? 'جارٍ الاتصال...' : 'اتصال'),
+                  onPressed: connectingAddress != null ? null : () => connect(device),
+                  child: Text(
+                    connectingAddress == '${device.transport}:${device.address}'
+                        ? 'جارٍ الاتصال...'
+                        : 'اتصال',
+                  ),
                 ),
               ),
             ),
@@ -456,9 +460,8 @@ class _HomeState extends State<Home> {
             initialValue: paperWidthDots,
             decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 384, child: Text('58 مم — 384 نقطة')),
-              DropdownMenuItem(value: 392, child: Text('58 مم — 392 نقطة')),
-              DropdownMenuItem(value: 576, child: Text('80 مم — 576 نقطة')),
+              DropdownMenuItem(value: 384, child: Text('58 مم')),
+                            DropdownMenuItem(value: 576, child: Text('80 مم')),
             ],
             onChanged: (value) { if (value != null) changePaperWidth(value == 576 ? 80 : 58, value); },
           ),
