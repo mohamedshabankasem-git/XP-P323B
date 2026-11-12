@@ -122,7 +122,7 @@ class _HomeState extends State<Home> {
       devices
         ..clear()
         ..addAll(await bridge.devices(transport: transportFilter));
-      final status = await bridge.connectionStatus(restore: true);
+      final status = await bridge.connectionStatus(restore: true, transport: transportFilter);
       if (status['connected'] == true) {
         selected = PrinterDevice(
           status['name']?.toString() ?? 'XP Printer',
