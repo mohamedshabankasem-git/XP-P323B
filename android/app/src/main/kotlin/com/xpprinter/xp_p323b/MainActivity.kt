@@ -39,6 +39,7 @@ class MainActivity : FlutterActivity() {
     private var pendingShare: Map<String, Any?>? = null
     private var bt: BluetoothSocket? = null
     private var usb: UsbDeviceConnection? = null
+    private var usbDeviceId: String? = null
     private var endpoint: UsbEndpoint? = null
     private val printerExecutor = Executors.newSingleThreadExecutor()
 
