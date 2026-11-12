@@ -21,6 +21,8 @@ import android.printservice.PrintJob
 import android.printservice.PrintService
 import android.printservice.PrinterDiscoverySession
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileInputStream
 import java.util.UUID
 import java.util.concurrent.Executors
 
@@ -92,6 +94,32 @@ class XPPrintService : PrintService() {
     }
 
     private fun printPdf(
+        descriptor: ParcelFileDescriptor,
+        address: String,
+        selectedMediaId: String?
+    ) {
+        // Android may provide the print document through a pipe. PdfRenderer needs
+        // a seekable file descriptor, so spool the incoming data to app cache first.
+        val pdfFile = File.createTempFile("xp-print-", ".pdf", cacheDir)
+        try {
+            FileInputStream(descriptor.fileDescriptor).use { input ->
+                pdfFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            val seekableDescriptor = ParcelFileDescriptor.open(
+                pdfFile,
+                ParcelFileDescriptor.MODE_READ_ONLY
+            )
+            try {
+                renderAndSendPdf(seekableDescriptor, address, selectedMediaId)
+            } finally {
+                seekableDescriptor.close()
+            }
+        } finally {
+            pdfFile.delete()
+        }
+    }
+
+    private fun renderAndSendPdf(
         descriptor: ParcelFileDescriptor,
         address: String,
         selectedMediaId: String?
