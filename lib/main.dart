@@ -57,7 +57,6 @@ class _HomeState extends State<Home> {
     shareSub = bridge.shares.listen(_onShared, onError: (Object error) {
       if (mounted) toast('تعذر استقبال المشاركة: $error');
     });
-    refresh();
     _loadSettings();
   }
 
@@ -109,10 +108,13 @@ class _HomeState extends State<Home> {
           paperWidthMm = settings['paperWidthMm'] as int;
           paperWidthDots = settings['paperWidthDots'] as int;
           printAlignment = settings['printAlignment'] as String;
+          transportFilter = settings['lastTransport'] as String;
         });
       }
+      await refresh();
     } catch (error) {
       toast('تعذر تحميل إعدادات الورق: $error');
+      await refresh();
     }
   }
 
@@ -183,6 +185,7 @@ class _HomeState extends State<Home> {
     if (transportFilter == value) return;
     setState(() { transportFilter = value; busy = true; });
     try {
+      await bridge.setTransport(value);
       devices..clear()..addAll(await bridge.devices(transport: value));
     } catch (error) {
       toast('تعذر تحديث قائمة الأجهزة: $error');
