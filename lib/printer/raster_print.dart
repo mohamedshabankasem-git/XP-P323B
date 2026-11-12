@@ -101,24 +101,24 @@ class RasterPrint {
             width: scaledWidth,
             interpolation: img.Interpolation.average,
           );
-    final canvas = img.Image(width: maxWidth, height: scaled.height);
-    img.fill(canvas, color: img.ColorRgb8(255, 255, 255));
-    final offset = alignment == 'left'
-        ? 0
-        : alignment == 'right'
-            ? maxWidth - scaled.width
-            : (maxWidth - scaled.width) ~/ 2;
-    img.compositeImage(canvas, scaled, dstX: offset);
 
-    // Convert the in-memory image directly; avoid PNG encode + second decode.
+    // Leave positioning to the printer's print-head alignment command.
+    // Sending a naturally-sized raster lets ESC a align it inside the
+    // printer's configured printable area instead of baking offsets in pixels.
     final raster = _decodedToRaster(
-      canvas,
+      scaled,
       maxWidth: maxWidth,
       maxHeight: maxHeightDots,
       threshold: threshold,
     );
+    final justification = alignment == 'left'
+        ? 0
+        : alignment == 'right'
+            ? 2
+            : 1;
     return <int>[
-      0x1B, 0x40,
+      0x1B, 0x40, // Initialize printer.
+      0x1B, 0x61, justification, // ESC a: printer-side justification.
       0x1D, 0x76, 0x30, 0x00,
       raster.widthBytes & 0xFF,
       (raster.widthBytes >> 8) & 0xFF,
@@ -126,6 +126,7 @@ class RasterPrint {
       (raster.height >> 8) & 0xFF,
       ...raster.data,
       0x0A, 0x0A,
+      0x1B, 0x61, 0x00, // Reset to left for subsequent raw jobs.
     ];
   }
 
@@ -164,19 +165,12 @@ class RasterPrint {
           height: 1.35,
         ),
       ),
-      // Use an LTR paragraph base so physical left/right alignment is
-      // unambiguous; the Unicode bidi algorithm still shapes Arabic runs.
       textDirection: TextDirection.ltr,
-      textAlign: alignment == 'left'
-          ? TextAlign.left
-          : alignment == 'right'
-              ? TextAlign.right
-              : TextAlign.center,
+      // Keep the raster itself content-sized; ESC a on the printer performs
+      // the final left/center/right positioning.
+      textAlign: TextAlign.left,
     );
-    painter.layout(
-      minWidth: (widthDots - 16).toDouble(),
-      maxWidth: (widthDots - 16).toDouble(),
-    );
+    painter.layout(maxWidth: (widthDots - 16).toDouble());
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeight) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
@@ -186,7 +180,11 @@ class RasterPrint {
     canvas.drawColor(Colors.white, BlendMode.src);
     painter.paint(canvas, const Offset(8, 8));
     final picture = recorder.endRecording();
-    final rendered = await picture.toImage(widthDots, height);
+    final rasterWidth = math.min(
+      widthDots,
+      math.max(1, painter.width.ceil() + 16),
+    ).toInt();
+    final rendered = await picture.toImage(rasterWidth, height);
     final byteData = await rendered.toByteData(
       format: ui.ImageByteFormat.png,
     );
