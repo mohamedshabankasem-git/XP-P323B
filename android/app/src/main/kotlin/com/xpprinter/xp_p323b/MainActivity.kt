@@ -25,6 +25,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val methodName = "xp_p323b/printer"
@@ -37,6 +38,7 @@ class MainActivity : FlutterActivity() {
     private var bt: BluetoothSocket? = null
     private var usb: UsbDeviceConnection? = null
     private var endpoint: UsbEndpoint? = null
+    private val printerExecutor = Executors.newSingleThreadExecutor()
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -72,7 +74,7 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "discoverDevices" -> result.success(discover())
                     "connectionStatus" -> result.success(connectionStatus())
-                    "restoreConnection" -> result.success(restoreConnection())
+                    "restoreConnection" -> runPrinterTask(result) { restoreConnection() }
                     "getSettings" -> {
                         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
                         result.success(
@@ -102,13 +104,17 @@ class MainActivity : FlutterActivity() {
                         val transport = call.argument<String>("transport") ?: "bluetooth"
                         val address = call.argument<String>("address") ?: error("Missing device")
                         val name = call.argument<String>("name") ?: "XP Printer"
-                        if (transport == "usb") connectUsb(address, name) else connectBt(address, name)
-                        result.success(connectionStatus())
+                        runPrinterTask(result) {
+                            if (transport == "usb") connectUsb(address, name) else connectBt(address, name)
+                            connectionStatus()
+                        }
                     }
                     "write" -> {
                         val bytes = call.argument<ByteArray>("bytes") ?: error("Missing bytes")
-                        writeData(bytes)
-                        result.success(true)
+                        runPrinterTask(result) {
+                            writeData(bytes)
+                            true
+                        }
                     }
                     "pdfPageCount" -> {
                         val path = call.argument<String>("path") ?: error("Missing PDF path")
@@ -365,6 +371,19 @@ class MainActivity : FlutterActivity() {
         return outputPaths
     }
 
+    private fun runPrinterTask(result: MethodChannel.Result, task: () -> Any?) {
+        printerExecutor.execute {
+            try {
+                val value = task()
+                runOnUiThread { result.success(value) }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    result.error("PRINTER", error.message ?: "Printer operation failed", null)
+                }
+            }
+        }
+    }
+
     private fun discover(): List<Map<String, String>> {
         val output = mutableListOf<Map<String, String>>()
         val adapter = BluetoothAdapter.getDefaultAdapter()
@@ -476,7 +495,12 @@ class MainActivity : FlutterActivity() {
                 (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
             manager.requestPermission(
                 device,
-                PendingIntent.getBroadcast(this, 0, Intent(usbAction), flags),
+                PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    Intent(usbAction).setPackage(packageName),
+                    flags,
+                ),
             )
             error("USB permission requested. Allow access and tap Connect again.")
         }
