@@ -483,18 +483,36 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun connectionStatus(): Map<String, Any?> {
-        val connected = (bt?.isConnected == true) || (usb != null)
         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
+        val savedTransport = prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"
+        if (savedTransport == "usb" && usb != null) {
+            val manager = getSystemService(Context.USB_SERVICE) as UsbManager
+            val physicallyPresent = manager.deviceList.values.any {
+                usbDeviceKey(it) == usbDeviceId
+            }
+            if (!physicallyPresent) {
+                try { usb?.close() } catch (_: Exception) {}
+                usb = null
+                usbDeviceId = null
+                endpoint = null
+            }
+        }
+        val connected = if (savedTransport == "usb") {
+            usb != null && usbDeviceId != null
+        } else {
+            bt?.isConnected == true
+        }
         return mapOf(
             "connected" to connected,
             "name" to (prefs.getString("lastName", "XP Printer") ?: "XP Printer"),
             "address" to (prefs.getString("lastAddress", "") ?: ""),
-            "transport" to (prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"),
+            "transport" to savedTransport,
         )
     }
 
     private fun restoreConnection(requestedTransport: String): Map<String, Any?> {
-        if ((bt?.isConnected == true) || usb != null) return connectionStatus()
+        val current = connectionStatus()
+        if (current["connected"] == true) return current
         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
         val address = prefs.getString("lastAddress", null) ?: return connectionStatus()
         val transport = prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"
@@ -519,6 +537,7 @@ class MainActivity : FlutterActivity() {
         usb?.close()
         bt = socket
         usb = null
+        usbDeviceId = null
         endpoint = null
         saveLastPrinter("bluetooth", address, name)
     }
@@ -569,6 +588,7 @@ class MainActivity : FlutterActivity() {
                     usb?.close()
                     bt = null
                     usb = connection
+                    usbDeviceId = usbDeviceKey(device)
                     endpoint = usbEndpoint
                     saveLastPrinter("usb", id, name)
                     return
@@ -623,6 +643,7 @@ class MainActivity : FlutterActivity() {
         }
         try {
             usb?.close()
+            usbDeviceId = null
         } catch (_: Exception) {
         }
         super.onDestroy()
