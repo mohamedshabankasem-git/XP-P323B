@@ -383,13 +383,40 @@ class _HomeState extends State<Home> {
       );
 
   IconData _deviceIcon(PrinterDevice device) {
-    switch (device.deviceType) {
-      case 'phone': return Icons.smartphone;
-      case 'audio': return Icons.headphones;
-      case 'printer': return Icons.print;
-      case 'computer': return Icons.computer;
-      case 'network': return Icons.router;
-      default: return Icons.devices_other;
+    switch (device.deviceType.toLowerCase()) {
+      case 'printer':
+        return Icons.print;
+      case 'phone':
+      case 'mobile':
+        return Icons.smartphone;
+      case 'audio':
+      case 'headset':
+      case 'speaker':
+        return Icons.headphones;
+      case 'computer':
+      case 'laptop':
+        return Icons.computer;
+      case 'keyboard':
+        return Icons.keyboard;
+      case 'mouse':
+      case 'pointing':
+        return Icons.mouse;
+      case 'gamepad':
+      case 'joystick':
+        return Icons.sports_esports;
+      case 'camera':
+      case 'imaging':
+        return Icons.camera_alt;
+      case 'storage':
+        return Icons.storage;
+      case 'hub':
+      case 'network':
+      case 'router':
+        return Icons.router;
+      case 'usb':
+        return Icons.usb;
+      default:
+        return device.transport == 'usb' ? Icons.usb : Icons.bluetooth_connected;
     }
   }
 
@@ -400,7 +427,7 @@ class _HomeState extends State<Home> {
               style: Theme.of(context).textTheme.titleLarge),
           ListTile(
             leading: Icon(
-              Icons.print,
+              selected == null ? Icons.print_disabled : _deviceIcon(selected!),
               color: selected == null ? Colors.red : Colors.green,
             ),
             title: Text(selected?.name ?? 'لا توجد جلسة طباعة نشطة'),
