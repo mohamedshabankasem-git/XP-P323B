@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:async';
 import 'dart:io';
 
@@ -118,11 +119,16 @@ class _HomeState extends State<Home> {
       final item = sharedItems.isNotEmpty ? sharedItems.first : null;
       if (item == null) {
         if (sharedText.trim().isNotEmpty) {
-          sharePreviewBytes = Uint8List.fromList(await RasterPrint.textToPng(
+          final textPng = await RasterPrint.textToPng(
             sharedText,
             widthDots: printWidthDots,
             alignment: printAlignment,
-          ));
+          );
+          sharePreviewBytes = RasterPrint.imageToPreviewPng(
+            textPng,
+            maxWidth: printWidthDots,
+            alignment: printAlignment,
+          );
           sharePreviewLabel = 'معاينة النص كما سيُطبع';
         }
       } else {
