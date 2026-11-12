@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<print-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:vendor="XP Printer"
+    android:settingsActivity="com.xpprinter.xp_p323b.MainActivity" />
