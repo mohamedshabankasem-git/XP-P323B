@@ -33,6 +33,7 @@ class MainActivity : FlutterActivity() {
     private val shareName = "xp_p323b/share"
     private val spp = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     private val usbAction get() = packageName + ".USB_PERMISSION"
+    private val usbResultAction get() = packageName + ".USB_PERMISSION_RESULT"
     private var method: MethodChannel? = null
     private var sink: EventChannel.EventSink? = null
     private var pendingShare: Map<String, Any?>? = null
@@ -43,7 +44,7 @@ class MainActivity : FlutterActivity() {
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == usbAction) {
+            if (intent.action == usbResultAction) {
                 method?.invokeMethod(
                     "usbPermissionResult",
                     mapOf(
@@ -59,7 +60,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val filter = IntentFilter(usbAction)
+        val filter = IntentFilter(usbResultAction)
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
@@ -414,7 +415,7 @@ class MainActivity : FlutterActivity() {
             output.add(
                 mapOf(
                     "name" to (it.productName ?: "USB printer"),
-                    "address" to it.deviceId.toString(),
+                    "address" to usbDeviceKey(it),
                     "transport" to "usb",
                     "deviceType" to usbDeviceType(it),
                 ),
@@ -514,9 +515,18 @@ class MainActivity : FlutterActivity() {
 
     private fun connectUsb(id: String, name: String) {
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
-        val device = manager.deviceList.values.firstOrNull {
-            it.deviceId.toString() == id
-        } ?: error("USB printer not found")
+        val available = manager.deviceList.values.toList()
+        val device = available.firstOrNull { usbDeviceKey(it) == id }
+            ?: run {
+                val parts = id.split(":")
+                val matches = if (parts.size >= 3 && parts[0] == "usb") {
+                    available.filter {
+                        it.vendorId.toString() == parts[1] && it.productId.toString() == parts[2]
+                    }
+                } else emptyList()
+                matches.singleOrNull()
+            }
+            ?: error("USB device is no longer connected. Reconnect the cable and search again.")
 
         if (!manager.hasPermission(device)) {
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
@@ -526,7 +536,7 @@ class MainActivity : FlutterActivity() {
                 PendingIntent.getBroadcast(
                     this,
                     0,
-                    Intent(usbAction).setPackage(packageName),
+                    Intent(this, UsbPermissionReceiver::class.java).setAction(usbAction),
                     flags,
                 ),
             )
@@ -557,6 +567,9 @@ class MainActivity : FlutterActivity() {
         }
         error("USB printer has no bulk output endpoint")
     }
+
+    private fun usbDeviceKey(device: android.hardware.usb.UsbDevice): String =
+        "usb:" + device.vendorId + ":" + device.productId + ":" + device.deviceName
 
     private fun writeData(bytes: ByteArray) {
         val socket = bt
