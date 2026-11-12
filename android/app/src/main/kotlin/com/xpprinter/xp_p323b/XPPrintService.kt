@@ -50,6 +50,7 @@ class XPPrintService : PrintService() {
             printJob.fail("عنوان الطابعة غير صالح")
             return
         }
+        val selectedMediaId = printJob.info.attributes?.mediaSize?.id
         if (!printJob.start()) {
             try { descriptor.close() } catch (_: Exception) {}
             return
@@ -57,7 +58,7 @@ class XPPrintService : PrintService() {
         executor.execute {
             var failure: String? = null
             try {
-                printPdf(descriptor, address, printJob.info.attributes?.mediaSize?.id)
+                printPdf(descriptor, address, selectedMediaId)
             } catch (error: Exception) {
                 failure = error.message ?: "فشلت الطباعة"
             } finally {
