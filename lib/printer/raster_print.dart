@@ -124,12 +124,12 @@ class RasterPrint {
     final widthBytes = (paperWidth + 7) ~/ 8;
     final contentWidth = source.widthBytes * 8;
     final usableWidth = paperWidth - leftMargin;
-    final offset = leftMargin +
+    final offset = (leftMargin +
         (alignment == 'right'
             ? math.max(0, usableWidth - contentWidth)
             : alignment == 'center'
                 ? math.max(0, (usableWidth - contentWidth) ~/ 2)
-                : 0);
+                : 0)).toInt();
     final data = List<int>.filled(widthBytes * source.height, 0);
     for (var y = 0; y < source.height; y++) {
       for (var x = 0; x < contentWidth && x + offset < paperWidth; x++) {
