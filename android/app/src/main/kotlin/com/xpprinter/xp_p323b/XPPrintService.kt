@@ -38,12 +38,21 @@ class XPPrintService : PrintService() {
     override fun onPrintJobQueued(printJob: PrintJob) {
         cancelRequested = false
         val descriptor = try {
-            printJob.document.data
+            printJob.document?.data
         } catch (error: Exception) {
             printJob.fail("تعذر قراءة ملف الطباعة: ${error.message}")
             return
+        } ?: run {
+            printJob.fail("ملف الطباعة غير متاح")
+            return
         }
-        val localId = printJob.info.printerId.localId
+        val printerId = printJob.info.printerId
+        if (printerId == null) {
+            try { descriptor.close() } catch (_: Exception) {}
+            printJob.fail("لم يتم تحديد الطابعة")
+            return
+        }
+        val localId = printerId.localId
         val address = localId.substringAfter('|', "")
         if (address.isBlank()) {
             try { descriptor.close() } catch (_: Exception) {}
@@ -160,12 +169,12 @@ class XPPrintService : PrintService() {
     }
 
     private inner class XpPrinterDiscoverySession : PrinterDiscoverySession() {
-        override fun onStartPrinterDiscovery(priorityList: MutableList<PrinterId>?) {
+        override fun onStartPrinterDiscovery(priorityList: MutableList<PrinterId>) {
             addPrinters(discoverPrinters())
         }
         override fun onStopPrinterDiscovery() = Unit
-        override fun onValidatePrinters(printerIds: MutableList<PrinterId>?) {
-            addPrinters(discoverPrinters().filter { printerIds == null || printerIds.contains(it.id) })
+        override fun onValidatePrinters(printerIds: MutableList<PrinterId>) {
+            addPrinters(discoverPrinters().filter { printerIds.contains(it.id) })
         }
         override fun onStartPrinterStateTracking(printerId: PrinterId) {
             addPrinters(discoverPrinters().filter { it.id == printerId })
