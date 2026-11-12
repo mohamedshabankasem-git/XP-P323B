@@ -81,9 +81,9 @@ class MainActivity : FlutterActivity() {
                         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
                         result.success(
                             mapOf(
-                                "paperWidthMm" to prefs.getInt("paperWidthMm", 80),
-                                "paperWidthDots" to prefs.getInt("paperWidthDots", 576),
-                                "printAlignment" to prefs.getString("printAlignment", "center"),
+                                "paperWidthMm" to prefs.getInt("paperWidthMm", 58),
+                                "paperWidthDots" to prefs.getInt("paperWidthDots", 384).let { if (it == 392) 384 else it },
+                                "printAlignment" to prefs.getString("printAlignment", "left"),
                                 "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
                             ),
                         )
@@ -104,10 +104,10 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "setPaperWidth" -> {
-                        val width = call.argument<Int>("paperWidthMm") ?: 80
-                        val dots = call.argument<Int>("paperWidthDots") ?: if (width == 58) 392 else 576
+                        val width = call.argument<Int>("paperWidthMm") ?: 58
+                        val dots = call.argument<Int>("paperWidthDots") ?: if (width == 58) 384 else 576
                         require(width == 58 || width == 80) { "Unsupported paper width" }
-                        require((width == 58 && (dots == 384 || dots == 392)) || (width == 80 && dots == 576)) { "Unsupported print width" }
+                        require((width == 58 && dots == 384) || (width == 80 && dots == 576)) { "Unsupported print width" }
                         getSharedPreferences("printer", MODE_PRIVATE).edit()
                             .putInt("paperWidthMm", width).putInt("paperWidthDots", dots).apply()
                         result.success(true)
