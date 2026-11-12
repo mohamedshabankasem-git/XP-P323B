@@ -173,7 +173,7 @@ class _HomeState extends State<Home> {
       final settings = await bridge.settings();
       if (mounted) {
         setState(() {
-          paperWidthDots = settings['paperWidthDots'] == 576 ? 576 : 384;
+          paperWidthDots = [400, 576].contains(settings['paperWidthDots']) ? settings['paperWidthDots'] as int : 384;
           paperWidthMm = paperWidthDots == 576 ? 80 : 58;
           printAlignment = settings['printAlignment'] as String;
           transportFilter = settings['lastTransport'] as String;
@@ -551,8 +551,9 @@ class _HomeState extends State<Home> {
             initialValue: paperWidthDots,
             decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 384, child: Text('58 مم')),
-                            DropdownMenuItem(value: 576, child: Text('80 مم')),
+              DropdownMenuItem(value: 384, child: Text('58 مم - 384 نقطة')),
+              DropdownMenuItem(value: 400, child: Text('58 مم - 400 نقطة')),
+              DropdownMenuItem(value: 576, child: Text('80 مم - 576 نقطة')),
             ],
             onChanged: (value) { if (value != null) changePaperWidth(value == 576 ? 80 : 58, value); },
           ),
