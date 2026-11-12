@@ -50,9 +50,9 @@ class PrinterBridge {
   Future<Map<String, dynamic>> settings() async {
     final value = await _method.invokeMethod<Map<dynamic, dynamic>>('getSettings');
     return {
-      'paperWidthMm': (value?['paperWidthMm'] as num?)?.toInt() ?? 80,
-      'paperWidthDots': (value?['paperWidthDots'] as num?)?.toInt() ?? 576,
-      'printAlignment': value?['printAlignment']?.toString() ?? 'center',
+      'paperWidthMm': (value?['paperWidthMm'] as num?)?.toInt() ?? 58,
+      'paperWidthDots': (value?['paperWidthDots'] as num?)?.toInt() ?? 384,
+      'printAlignment': value?['printAlignment']?.toString() ?? 'left',
       'lastTransport': value?['lastTransport']?.toString() == 'usb' ? 'usb' : 'bluetooth',
     };
   }
