@@ -18,6 +18,9 @@
             <intent-filter><action android:name="android.intent.action.SEND_MULTIPLE" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="image/*" /></intent-filter>
             <intent-filter><action android:name="android.intent.action.SEND_MULTIPLE" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="application/pdf" /></intent-filter>
         </activity>
+        <receiver android:name="com.xpprinter.xp_p323b.UsbPermissionReceiver" android:exported="false">
+            <intent-filter><action android:name="com.xpprinter.xp_p323b.USB_PERMISSION" /></intent-filter>
+        </receiver>
         <meta-data android:name="flutterEmbedding" android:value="2" />
     </application>
 </manifest>
