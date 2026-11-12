@@ -3,29 +3,33 @@ import 'package:image/image.dart' as img;
 import 'package:xp_p323b/printer/raster_print.dart';
 
 void main() {
-  test('encodes a monochrome image and delegates alignment to ESC/POS', () {
+  test('leaves a fixed 16-dot left margin on 58mm and 80mm paper', () {
     final source = img.Image(width: 8, height: 1);
     for (var x = 0; x < 8; x++) {
       source.setPixelRgb(x, 0, 0, 0, 0);
     }
+    final encoded = img.encodePng(source);
 
-    final command = RasterPrint.imageToEscPos(img.encodePng(source));
-
-    // ESC @, ESC a center, GS v 0 raster header (one byte wide).
-    expect(
-      command.take(10).toList(),
-      <int>[0x1B, 0x40, 0x1B, 0x61, 1, 0x1D, 0x76, 0x30, 0x00, 1],
-    );
-    expect(command[10], 0x00); // Width high byte.
-    expect(command[11], 0x01); // Height low byte.
-    expect(command[12], 0x00); // Height high byte.
-    expect(command[13], 0xFF);
-    expect(command.sublist(command.length - 5), <int>[
-      0x0A, 0x0A, 0x1B, 0x61, 0x00,
-    ]);
+    for (final paperWidth in <int>[384, 576]) {
+      final command = RasterPrint.imageToEscPos(
+        encoded,
+        maxWidth: paperWidth,
+        alignment: 'left',
+      );
+      final widthBytes = paperWidth ~/ 8;
+      expect(command.sublist(2, 5), <int>[0x1B, 0x61, 0]);
+      expect(command[9], widthBytes);
+      expect(command[10], 0);
+      expect(command[13], 0);
+      expect(command[14], 0);
+      expect(command[15], 0xFF);
+      expect(command.sublist(command.length - 5), <int>[
+        0x0A, 0x0A, 0x1B, 0x61, 0x00,
+      ]);
+    }
   });
 
-  test('uses printer-side left and right image alignment', () {
+  test('keeps left margin and applies alignment within remaining paper width', () {
     final source = img.Image(width: 8, height: 1);
     for (var x = 0; x < 8; x++) {
       source.setPixelRgb(x, 0, 0, 0, 0);
@@ -34,20 +38,22 @@ void main() {
 
     final left = RasterPrint.imageToEscPos(
       encoded,
-      maxWidth: 16,
+      maxWidth: 384,
       alignment: 'left',
     );
     final right = RasterPrint.imageToEscPos(
       encoded,
-      maxWidth: 16,
+      maxWidth: 384,
       alignment: 'right',
     );
 
-    // Raster data remains identical and content-sized; only ESC a changes.
+    // Printer justification stays left because offsets are in the raster.
     expect(left.sublist(2, 5), <int>[0x1B, 0x61, 0]);
-    expect(right.sublist(2, 5), <int>[0x1B, 0x61, 2]);
-    expect(left.sublist(13, 14), <int>[0xFF]);
-    expect(right.sublist(13, 14), <int>[0xFF]);
+    expect(right.sublist(2, 5), <int>[0x1B, 0x61, 0]);
+    // 16 dots are blank on the left; left/right content is placed
+    // inside the remaining 368 dots.
+    expect(left[15], 0xFF);
+    expect(right[60], 0xFF);
   });
 
   test('respects a narrower configured paper width', () {
