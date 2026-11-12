@@ -41,6 +41,8 @@ class _HomeState extends State<Home> {
   String sharedText = '';
   String shareStatus = 'لم يتم استقبال مشاركة بعد';
   int tab = 0;
+  String transportFilter = 'bluetooth';
+  bool connecting = false;
   int paperWidthMm = 80;
   int paperWidthDots = 576;
   String printAlignment = 'center';
@@ -158,6 +160,8 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> connect(PrinterDevice device) async {
+    if (connecting) return;
+    setState(() => connecting = true);
     try {
       await bridge.connect(device);
       final connected = await ensureConnected();
@@ -170,6 +174,20 @@ class _HomeState extends State<Home> {
       toast('فشل الاتصال: $error');
       // USB may need the Android permission dialog; refresh after approval.
       await refresh();
+    } finally {
+      if (mounted) setState(() => connecting = false);
+    }
+  }
+
+  Future<void> _setTransport(String value) async {
+    if (transportFilter == value) return;
+    setState(() { transportFilter = value; busy = true; });
+    try {
+      devices..clear()..addAll(await bridge.devices());
+    } catch (error) {
+      toast('تعذر تحديث قائمة الأجهزة: $error');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -323,20 +341,28 @@ class _HomeState extends State<Home> {
                       : 'متصل عبر Bluetooth',
             ),
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(transportFilter == 'bluetooth' ? 'الاتصال عبر Bluetooth' : 'الاتصال عبر USB'),
+            subtitle: Text(transportFilter == 'bluetooth' ? 'اعرض أجهزة البلوتوث المقترنة' : 'اعرض أجهزة USB المتصلة بالهاتف'),
+            secondary: Icon(transportFilter == 'bluetooth' ? Icons.bluetooth : Icons.usb),
+            value: transportFilter == 'usb',
+            onChanged: busy || connecting ? null : (value) => _setTransport(value ? 'usb' : 'bluetooth'),
+          ),
           FilledButton.icon(
             onPressed: busy ? null : refresh,
             icon: const Icon(Icons.search),
             label: Text(busy ? 'جارٍ البحث والاستعادة...' : 'البحث واستعادة الاتصال'),
           ),
-          ...devices.map(
+          ...devices.where((device) => device.transport == transportFilter).map(
             (device) => Card(
               child: ListTile(
                 leading: Icon(_deviceIcon(device)),
                 title: Text(device.name),
                 subtitle: Text(device.address),
                 trailing: TextButton(
-                  onPressed: () => connect(device),
-                  child: const Text('اتصال'),
+                  onPressed: connecting ? null : () => connect(device),
+                  child: Text(connecting ? 'جارٍ الاتصال...' : 'اتصال'),
                 ),
               ),
             ),
