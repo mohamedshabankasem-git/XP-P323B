@@ -42,11 +42,12 @@ class _HomeState extends State<Home> {
   String shareStatus = 'لم يتم استقبال مشاركة بعد';
   int tab = 0;
   int paperWidthMm = 80;
+  int paperWidthDots = 576;
   String printAlignment = 'center';
   bool busy = false;
   bool printingShare = false;
 
-  int get printWidthDots => paperWidthMm == 58 ? 392 : 576;
+  int get printWidthDots => paperWidthDots;
 
   @override
   void initState() {
@@ -104,6 +105,7 @@ class _HomeState extends State<Home> {
       if (mounted) {
         setState(() {
           paperWidthMm = settings['paperWidthMm'] as int;
+          paperWidthDots = settings['paperWidthDots'] as int;
           printAlignment = settings['printAlignment'] as String;
         });
       }
@@ -270,10 +272,10 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<void> changePaperWidth(int width) async {
+  Future<void> changePaperWidth(int width, int dots) async {
     try {
-      await bridge.setPaperWidthMm(width);
-      if (mounted) setState(() => paperWidthMm = width);
+      await bridge.setPaperWidth(width, dots);
+      if (mounted) setState(() { paperWidthMm = width; paperWidthDots = dots; });
       toast('تم حفظ مقاس الورق');
     } catch (error) {
       toast('تعذر حفظ مقاس الورق: $error');
@@ -290,6 +292,17 @@ class _HomeState extends State<Home> {
           ),
         ),
       );
+
+  IconData _deviceIcon(PrinterDevice device) {
+    switch (device.deviceType) {
+      case 'phone': return Icons.smartphone;
+      case 'audio': return Icons.headphones;
+      case 'printer': return Icons.print;
+      case 'computer': return Icons.computer;
+      case 'network': return Icons.router;
+      default: return Icons.devices_other;
+    }
+  }
 
   Widget _printerSection() => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,11 +331,7 @@ class _HomeState extends State<Home> {
           ...devices.map(
             (device) => Card(
               child: ListTile(
-                leading: Icon(
-                  device.transport == 'usb'
-                      ? Icons.usb
-                      : Icons.bluetooth,
-                ),
+                leading: Icon(_deviceIcon(device)),
                 title: Text(device.name),
                 subtitle: Text(device.address),
                 trailing: TextButton(
@@ -412,14 +421,15 @@ class _HomeState extends State<Home> {
           const Text('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.'),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
-            key: ValueKey(paperWidthMm),
-            initialValue: paperWidthMm,
+            key: ValueKey('$paperWidthMm:$paperWidthDots'),
+            initialValue: paperWidthDots,
             decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 58, child: Text('58 مم — 392 نقطة')),
-              DropdownMenuItem(value: 80, child: Text('80 مم — 576 نقطة')),
+              DropdownMenuItem(value: 384, child: Text('58 مم — 384 نقطة')),
+              DropdownMenuItem(value: 392, child: Text('58 مم — 392 نقطة')),
+              DropdownMenuItem(value: 576, child: Text('80 مم — 576 نقطة')),
             ],
-            onChanged: (value) { if (value != null) changePaperWidth(value); },
+            onChanged: (value) { if (value != null) changePaperWidth(value == 576 ? 80 : 58, value); },
           ),
           const SizedBox(height: 12),
           const Text('محاذاة الطباعة'),
