@@ -84,8 +84,15 @@ class MainActivity : FlutterActivity() {
                                 "paperWidthMm" to prefs.getInt("paperWidthMm", 80),
                                 "paperWidthDots" to prefs.getInt("paperWidthDots", 576),
                                 "printAlignment" to prefs.getString("printAlignment", "center"),
+                                "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
                             ),
                         )
+                    }
+                    "setTransport" -> {
+                        val transport = call.argument<String>("transport") ?: "bluetooth"
+                        require(transport == "bluetooth" || transport == "usb") { "Unsupported connection transport" }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit().putString("lastTransport", transport).apply()
+                        result.success(true)
                     }
                     "setPrintAlignment" -> {
                         val alignment = call.argument<String>("alignment") ?: "center"
