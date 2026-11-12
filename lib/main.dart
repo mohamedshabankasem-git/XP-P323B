@@ -48,6 +48,9 @@ class _HomeState extends State<Home> {
   String printAlignment = 'left';
   bool busy = false;
   bool printingShare = false;
+  String? sharePreviewPath;
+  String? sharePreviewLabel;
+  bool preparingPreview = false;
 
   int get printWidthDots => paperWidthDots;
 
@@ -93,11 +96,54 @@ class _HomeState extends State<Home> {
       tab = 0;
     });
 
+    _prepareSharePreview();
+
     // The share shortcut is intended to print immediately when a printer is
     // connected. If reconnection is needed, printShared attempts it first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) printShared(automatic: true);
     });
+  }
+
+  Future<void> _prepareSharePreview() async {
+    if (!mounted) return;
+    setState(() {
+      preparingPreview = true;
+      sharePreviewPath = null;
+      sharePreviewLabel = null;
+    });
+    try {
+      final item = sharedItems.isNotEmpty ? sharedItems.first : null;
+      if (item == null) {
+        if (sharedText.trim().isNotEmpty) {
+          sharePreviewLabel = 'معاينة النص';
+        }
+      } else {
+        final path = item['path']?.toString() ?? '';
+        final mime = (item['mimeType']?.toString() ?? '').toLowerCase();
+        if (path.isEmpty) throw StateError('مسار الملف غير موجود');
+        if (mime.startsWith('image/')) {
+          sharePreviewPath = path;
+          sharePreviewLabel = 'معاينة الصورة كما ستُرسل للطباعة';
+        } else if (mime == 'application/pdf' || path.toLowerCase().endsWith('.pdf')) {
+          final count = await bridge.pdfPageCount(path);
+          if (count > 0) {
+            sharePreviewPath = await bridge.renderPdfPage(
+              path,
+              pageIndex: 0,
+              widthDots: printWidthDots,
+            );
+            sharePreviewLabel = 'معاينة الصفحة الأولى من PDF ($count صفحة)';
+          }
+        } else {
+          sharePreviewLabel = item['name']?.toString() ?? 'نوع ملف غير مدعوم للمعاينة';
+        }
+      }
+    } catch (error) {
+      sharePreviewLabel = 'تعذرت المعاينة: $error';
+    } finally {
+      if (mounted) setState(() => preparingPreview = false);
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -398,24 +444,53 @@ class _HomeState extends State<Home> {
           ),
           const SizedBox(height: 12),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.inbox),
-              title: const Text('العناصر المستلمة'),
-              subtitle: Text(shareStatus),
-            ),
-          ),
-          if (sharedText.trim().isNotEmpty)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.text_snippet_outlined),
-                title: const Text('نص مستلم'),
-                subtitle: Text(
-                  sharedText,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.receipt_long_outlined),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(preparingPreview ? 'جارٍ تجهيز المعاينة...' : (sharePreviewLabel ?? 'معاينة الطباعة'))),
+                    Text('$paperWidthMm مم', style: Theme.of(context).textTheme.labelMedium),
+                  ]),
+                  const SizedBox(height: 10),
+                  Container(
+                    constraints: const BoxConstraints(minHeight: 150, maxHeight: 440),
+                    width: double.infinity,
+                    color: const Color(0xffeeeeee),
+                    alignment: Alignment.topCenter,
+                    child: preparingPreview
+                        ? const Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())
+                        : sharePreviewPath != null
+                            ? Image.file(
+                                File(sharePreviewPath!),
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(24), child: Text('تعذر عرض الملف')),
+                              )
+                            : sharedText.trim().isNotEmpty
+                                ? Container(
+                                    width: paperWidthDots.toDouble(),
+                                    color: Colors.white,
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(sharedText, textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.black, fontSize: 14, height: 1.35)),
+                                  )
+                                : Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Text(sharePreviewLabel ?? 'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا'),
+                                  ),
+                  ),
+                  if (sharedItems.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('المعاينة للعنصر الأول من ${sharedItems.length} عناصر؛ ستتم طباعة جميع العناصر المدعومة.'),
+                    ),
+                ],
               ),
             ),
+          ),
           FilledButton.icon(
             onPressed: printingShare ||
                     (sharedItems.isEmpty && sharedText.trim().isEmpty)
