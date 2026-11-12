@@ -434,24 +434,39 @@ class MainActivity : FlutterActivity() {
         return output
     }
 
-    private fun bluetoothDeviceType(deviceClass: BluetoothClass?): String =
-        when (deviceClass?.majorDeviceClass) {
+    private fun bluetoothDeviceType(deviceClass: BluetoothClass?): String {
+        if (deviceClass == null) return "other"
+        return when (deviceClass.majorDeviceClass) {
             BluetoothClass.Device.Major.PHONE -> "phone"
             BluetoothClass.Device.Major.AUDIO_VIDEO -> "audio"
             BluetoothClass.Device.Major.COMPUTER -> "computer"
-            BluetoothClass.Device.Major.PERIPHERAL -> "printer"
+            BluetoothClass.Device.Major.PERIPHERAL -> when (deviceClass.deviceClass) {
+                0x0500, 0x0504, 0x0508 -> "gamepad"
+                0x0540, 0x0580, 0x05C0 -> "keyboard"
+                else -> "other"
+            }
+            BluetoothClass.Device.Major.IMAGING -> when (deviceClass.deviceClass and 0x00F0) {
+                0x0080 -> "printer"
+                0x0010, 0x0020 -> "camera"
+                else -> "imaging"
+            }
             else -> "other"
         }
+    }
 
     private fun usbDeviceType(device: android.hardware.usb.UsbDevice): String {
-        if (device.deviceClass == UsbConstants.USB_CLASS_PRINTER ||
-            (0 until device.interfaceCount).any {
-                device.getInterface(it).interfaceClass == UsbConstants.USB_CLASS_PRINTER
-            }) return "printer"
-        return when (device.deviceClass) {
-            1 -> "audio"
-            2 -> "phone"
-            3 -> "computer"
+        val classes = (0 until device.interfaceCount)
+            .map { device.getInterface(it).interfaceClass }
+            .toSet() + device.deviceClass
+        if (UsbConstants.USB_CLASS_PRINTER in classes) return "printer"
+        return when {
+            3 in classes -> "keyboard"
+            1 in classes -> "audio"
+            8 in classes -> "storage"
+            9 in classes -> "hub"
+            2 in classes -> "network"
+            6 in classes -> "camera"
+            10 in classes -> "network"
             else -> "other"
         }
     }
