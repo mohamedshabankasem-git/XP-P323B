@@ -164,7 +164,9 @@ class RasterPrint {
           height: 1.35,
         ),
       ),
-      textDirection: TextDirection.rtl,
+      // Use an LTR paragraph base so physical left/right alignment is
+      // unambiguous; the Unicode bidi algorithm still shapes Arabic runs.
+      textDirection: TextDirection.ltr,
       textAlign: alignment == 'left'
           ? TextAlign.left
           : alignment == 'right'
