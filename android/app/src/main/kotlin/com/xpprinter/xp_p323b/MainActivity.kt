@@ -108,7 +108,7 @@ class MainActivity : FlutterActivity() {
                         val width = call.argument<Int>("paperWidthMm") ?: 58
                         val dots = call.argument<Int>("paperWidthDots") ?: if (width == 58) 384 else 576
                         require(width == 58 || width == 80) { "Unsupported paper width" }
-                        require((width == 58 && dots == 384) || (width == 80 && dots == 576)) { "Unsupported print width" }
+                        require((width == 58 && (dots == 384 || dots == 400)) || (width == 80 && dots == 576)) { "Unsupported print width" }
                         getSharedPreferences("printer", MODE_PRIVATE).edit()
                             .putInt("paperWidthMm", width).putInt("paperWidthDots", dots).apply()
                         result.success(true)
