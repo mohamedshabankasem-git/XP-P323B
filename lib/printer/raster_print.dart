@@ -88,7 +88,7 @@ class RasterPrint {
     required int maxWidth,
     required String alignment,
   }) {
-    final margin = maxWidth == 384 ? 8 : 0;
+    const margin = 16;
     final source = imageToRaster(
       encodedImage,
       maxWidth: maxWidth - margin,
@@ -162,10 +162,9 @@ class RasterPrint {
             interpolation: img.Interpolation.average,
           );
 
-    // Leave positioning to the printer's print-head alignment command.
-    // Sending a naturally-sized raster lets ESC a align it inside the
-    // printer's configured printable area instead of baking offsets in pixels.
-    final margin = maxWidth == 384 ? 8 : 0;
+    // Bake the 16-dot left margin and requested alignment into the raster.
+    // The raster spans the selected paper width for consistent positioning.
+    const margin = 16;
     final sourceRaster = _decodedToRaster(
       scaled,
       maxWidth: maxWidth - margin,
@@ -178,15 +177,8 @@ class RasterPrint {
       leftMargin: margin,
       alignment: alignment,
     );
-    // 58mm output is positioned in a full-width raster so its fixed
-    // 8-dot left margin is preserved regardless of printer alignment.
-    final justification = margin > 0
-        ? 0
-        : alignment == 'left'
-            ? 0
-            : alignment == 'right'
-                ? 2
-                : 1;
+    // Positioning is already encoded in the full-width raster.
+    const justification = 0;
     return <int>[
       0x1B, 0x40, // Initialize printer.
       0x1B, 0x61, justification, // ESC a: printer-side justification.
