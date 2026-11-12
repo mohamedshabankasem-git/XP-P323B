@@ -53,11 +53,15 @@ class PrinterBridge {
       'paperWidthMm': (value?['paperWidthMm'] as num?)?.toInt() ?? 80,
       'paperWidthDots': (value?['paperWidthDots'] as num?)?.toInt() ?? 576,
       'printAlignment': value?['printAlignment']?.toString() ?? 'center',
+      'lastTransport': value?['lastTransport']?.toString() == 'usb' ? 'usb' : 'bluetooth',
     };
   }
 
   Future<void> setPaperWidth(int width, int dots) =>
       _method.invokeMethod('setPaperWidth', {'paperWidthMm': width, 'paperWidthDots': dots});
+
+  Future<void> setTransport(String transport) =>
+      _method.invokeMethod('setTransport', {'transport': transport});
 
   Future<void> setPrintAlignment(String alignment) =>
       _method.invokeMethod('setPrintAlignment', {'alignment': alignment});
