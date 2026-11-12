@@ -1,13 +1,14 @@
 import 'package:flutter/services.dart';
 
 class PrinterDevice {
-  const PrinterDevice(this.name, this.address, this.transport);
-  final String name, address, transport;
+  const PrinterDevice(this.name, this.address, this.transport, [this.deviceType = 'other']);
+  final String name, address, transport, deviceType;
 
   factory PrinterDevice.fromMap(Map<dynamic, dynamic> map) => PrinterDevice(
         map['name']?.toString() ?? 'Printer',
         map['address']?.toString() ?? '',
         map['transport']?.toString() ?? 'bluetooth',
+        map['deviceType']?.toString() ?? 'other',
       );
 }
 
@@ -47,12 +48,13 @@ class PrinterBridge {
     final value = await _method.invokeMethod<Map<dynamic, dynamic>>('getSettings');
     return {
       'paperWidthMm': (value?['paperWidthMm'] as num?)?.toInt() ?? 80,
+      'paperWidthDots': (value?['paperWidthDots'] as num?)?.toInt() ?? 576,
       'printAlignment': value?['printAlignment']?.toString() ?? 'center',
     };
   }
 
-  Future<void> setPaperWidthMm(int width) =>
-      _method.invokeMethod('setPaperWidth', {'paperWidthMm': width});
+  Future<void> setPaperWidth(int width, int dots) =>
+      _method.invokeMethod('setPaperWidth', {'paperWidthMm': width, 'paperWidthDots': dots});
 
   Future<void> setPrintAlignment(String alignment) =>
       _method.invokeMethod('setPrintAlignment', {'alignment': alignment});
