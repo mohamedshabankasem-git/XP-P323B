@@ -83,6 +83,31 @@ class RasterPrint {
     );
   }
 
+  static Uint8List imageToPreviewPng(
+    List<int> encodedImage, {
+    required int maxWidth,
+    required String alignment,
+  }) {
+    final raster = imageToRaster(encodedImage, maxWidth: maxWidth);
+    final paper = img.Image(width: maxWidth, height: raster.height);
+    img.fill(paper, color: img.ColorRgb8(255, 255, 255));
+    final contentWidth = raster.widthBytes * 8;
+    final offset = alignment == 'right'
+        ? maxWidth - contentWidth
+        : alignment == 'center'
+            ? (maxWidth - contentWidth) ~/ 2
+            : 0;
+    for (var y = 0; y < raster.height; y++) {
+      for (var x = 0; x < contentWidth && x + offset < maxWidth; x++) {
+        final byte = raster.data[y * raster.widthBytes + (x ~/ 8)];
+        if ((byte & (0x80 >> (x % 8))) != 0) {
+          paper.setPixelRgb(x + offset, y, 0, 0, 0);
+        }
+      }
+    }
+    return Uint8List.fromList(img.encodePng(paper));
+  }
+
   static List<int> imageToEscPos(
     List<int> encodedImage, {
     int threshold = 160,
