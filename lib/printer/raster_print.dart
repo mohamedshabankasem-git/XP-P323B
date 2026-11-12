@@ -88,16 +88,15 @@ class RasterPrint {
     required int maxWidth,
     required String alignment,
   }) {
-    const margin = 16;
+    const margin = 8;
     final source = imageToRaster(
       encodedImage,
-      maxWidth: maxWidth - margin,
+      maxWidth: maxWidth,
     );
     final raster = _positionRaster(
       source,
       paperWidth: maxWidth,
       leftMargin: margin,
-      alignment: alignment,
     );
     final paper = img.Image(width: maxWidth, height: raster.height);
     img.fill(paper, color: img.ColorRgb8(255, 255, 255));
@@ -118,18 +117,11 @@ class RasterPrint {
     ThermalRaster source, {
     required int paperWidth,
     required int leftMargin,
-    required String alignment,
   }) {
     if (leftMargin == 0) return source;
     final widthBytes = (paperWidth + 7) ~/ 8;
     final contentWidth = source.widthBytes * 8;
-    final usableWidth = paperWidth - leftMargin;
-    final offset = (leftMargin +
-        (alignment == 'right'
-            ? math.max(0, usableWidth - contentWidth)
-            : alignment == 'center'
-                ? math.max(0, (usableWidth - contentWidth) ~/ 2)
-                : 0)).toInt();
+    final offset = leftMargin;
     final data = List<int>.filled(widthBytes * source.height, 0);
     for (var y = 0; y < source.height; y++) {
       for (var x = 0; x < contentWidth && x + offset < paperWidth; x++) {
@@ -162,12 +154,11 @@ class RasterPrint {
             interpolation: img.Interpolation.average,
           );
 
-    // Bake the 16-dot left margin and requested alignment into the raster.
-    // The raster spans the selected paper width for consistent positioning.
-    const margin = 16;
+    // Shift the original-size raster 8 dots right without scaling it.
+    const margin = 8;
     final sourceRaster = _decodedToRaster(
       scaled,
-      maxWidth: maxWidth - margin,
+      maxWidth: maxWidth,
       maxHeight: maxHeightDots,
       threshold: threshold,
     );
@@ -175,7 +166,6 @@ class RasterPrint {
       sourceRaster,
       paperWidth: maxWidth,
       leftMargin: margin,
-      alignment: alignment,
     );
     // Positioning is already encoded in the full-width raster.
     const justification = 0;
@@ -233,7 +223,7 @@ class RasterPrint {
       // the final left/center/right positioning.
       textAlign: TextAlign.left,
     );
-    painter.layout(maxWidth: (widthDots - 16).toDouble());
+    painter.layout(maxWidth: widthDots.toDouble());
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeight) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
