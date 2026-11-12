@@ -121,7 +121,7 @@ class _HomeState extends State<Home> {
     try {
       devices
         ..clear()
-        ..addAll(await bridge.devices());
+        ..addAll(await bridge.devices(transport: transportFilter));
       final status = await bridge.connectionStatus(restore: true);
       if (status['connected'] == true) {
         selected = PrinterDevice(
@@ -183,7 +183,7 @@ class _HomeState extends State<Home> {
     if (transportFilter == value) return;
     setState(() { transportFilter = value; busy = true; });
     try {
-      devices..clear()..addAll(await bridge.devices());
+      devices..clear()..addAll(await bridge.devices(transport: value));
     } catch (error) {
       toast('تعذر تحديث قائمة الأجهزة: $error');
     } finally {
@@ -341,13 +341,15 @@ class _HomeState extends State<Home> {
                       : 'متصل عبر Bluetooth',
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(transportFilter == 'bluetooth' ? 'الاتصال عبر Bluetooth' : 'الاتصال عبر USB'),
-            subtitle: Text(transportFilter == 'bluetooth' ? 'اعرض أجهزة البلوتوث المقترنة' : 'اعرض أجهزة USB المتصلة بالهاتف'),
-            secondary: Icon(transportFilter == 'bluetooth' ? Icons.bluetooth : Icons.usb),
-            value: transportFilter == 'usb',
-            onChanged: busy || connecting ? null : (value) => _setTransport(value ? 'usb' : 'bluetooth'),
+          DropdownButtonFormField<String>(
+            key: ValueKey(transportFilter),
+            initialValue: transportFilter,
+            decoration: const InputDecoration(labelText: 'طريقة الاتصال', border: OutlineInputBorder()),
+            items: const [
+              DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text('Bluetooth')])),
+              DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text('USB')])),
+            ],
+            onChanged: busy || connecting ? null : (value) { if (value != null) _setTransport(value); },
           ),
           FilledButton.icon(
             onPressed: busy ? null : refresh,
