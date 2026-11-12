@@ -22,6 +22,7 @@ import android.printservice.PrintService
 import android.printservice.PrinterDiscoverySession
 import androidx.core.content.ContextCompat
 import java.io.File
+import java.io.BufferedInputStream
 import java.io.FileInputStream
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -102,8 +103,15 @@ class XPPrintService : PrintService() {
         // a seekable file descriptor, so spool the incoming data to app cache first.
         val pdfFile = File.createTempFile("xp-print-", ".pdf", cacheDir)
         try {
-            FileInputStream(descriptor.fileDescriptor).use { input ->
-                pdfFile.outputStream().use { output -> input.copyTo(output) }
+            BufferedInputStream(FileInputStream(descriptor.fileDescriptor)).use { input ->
+                pdfFile.outputStream().buffered().use { output -> input.copyTo(output, 64 * 1024) }
+            }
+            check(pdfFile.length() >= 8L) { "ملف الطباعة فارغ أو غير مكتمل" }
+            val signature = ByteArray(5)
+            FileInputStream(pdfFile).use { input ->
+                check(input.read(signature) == signature.size &&
+                    signature.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))
+                ) { "المستند المستلم ليس PDF صالحاً من نظام الطباعة" }
             }
             val seekableDescriptor = ParcelFileDescriptor.open(
                 pdfFile,
@@ -157,8 +165,8 @@ class XPPrintService : PrintService() {
                             postTranslate(LEFT_MARGIN.toFloat(), 0f)
                         }
                         page.render(bitmap, null, transform, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-                        output.write(bitmapToEscPos(bitmap))
-                        output.flush()
+                        writeInSafeChunks(output, bitmapToEscPos(bitmap))
+
                     } finally {
                         bitmap.recycle()
                     }
@@ -170,6 +178,18 @@ class XPPrintService : PrintService() {
             output.flush()
         } finally {
             renderer.close()
+        }
+    }
+
+    /** Avoid overflowing small Bluetooth printer receive buffers with full-page writes. */
+    private fun writeInSafeChunks(output: java.io.OutputStream, data: ByteArray) {
+        var offset = 0
+        while (offset < data.size) {
+            check(!cancelRequested) { "تم إلغاء الطباعة" }
+            val count = minOf(BT_WRITE_CHUNK, data.size - offset)
+            output.write(data, offset, count)
+            output.flush()
+            offset += count
         }
     }
 
@@ -250,5 +270,6 @@ class XPPrintService : PrintService() {
         private const val LEFT_MARGIN = 8
         private const val THRESHOLD = 170
         private const val MAX_PAGE_HEIGHT = 12000
+        private const val BT_WRITE_CHUNK = 1024
     }
 }
