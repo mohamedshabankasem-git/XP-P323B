@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'printer/printer_bridge.dart';
 import 'printer/escpos.dart';
 import 'printer/raster_print.dart';
