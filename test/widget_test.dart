@@ -65,7 +65,7 @@ void main() {
     // A saved non-default alignment must appear after asynchronous settings load.
     expect(find.text('يمين'), findsOneWidget);
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byKey(const ValueKey('right')));
     await tester.pumpAndSettle();
 
     // The selected value remains visible behind the open popup, so the
