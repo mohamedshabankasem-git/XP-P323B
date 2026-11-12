@@ -144,7 +144,7 @@ class _HomeState extends State<Home> {
 
   Future<bool> ensureConnected() async {
     try {
-      final status = await bridge.connectionStatus(restore: true);
+      final status = await bridge.connectionStatus(restore: true, transport: transportFilter);
       if (status['connected'] == true) {
         selected = PrinterDevice(
           status['name']?.toString() ?? 'XP Printer',
