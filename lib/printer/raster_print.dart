@@ -88,15 +88,21 @@ class RasterPrint {
     required int maxWidth,
     required String alignment,
   }) {
-    final raster = imageToRaster(encodedImage, maxWidth: maxWidth);
+    final margin = maxWidth == 384 ? 8 : 0;
+    final source = imageToRaster(
+      encodedImage,
+      maxWidth: maxWidth - margin,
+    );
+    final raster = _positionRaster(
+      source,
+      paperWidth: maxWidth,
+      leftMargin: margin,
+      alignment: alignment,
+    );
     final paper = img.Image(width: maxWidth, height: raster.height);
     img.fill(paper, color: img.ColorRgb8(255, 255, 255));
     final contentWidth = raster.widthBytes * 8;
-    final offset = alignment == 'right'
-        ? maxWidth - contentWidth
-        : alignment == 'center'
-            ? (maxWidth - contentWidth) ~/ 2
-            : 0;
+    const offset = 0;
     for (var y = 0; y < raster.height; y++) {
       for (var x = 0; x < contentWidth && x + offset < maxWidth; x++) {
         final byte = raster.data[y * raster.widthBytes + (x ~/ 8)];
@@ -106,6 +112,35 @@ class RasterPrint {
       }
     }
     return Uint8List.fromList(img.encodePng(paper));
+  }
+
+  static ThermalRaster _positionRaster(
+    ThermalRaster source, {
+    required int paperWidth,
+    required int leftMargin,
+    required String alignment,
+  }) {
+    if (leftMargin == 0) return source;
+    final widthBytes = (paperWidth + 7) ~/ 8;
+    final contentWidth = source.widthBytes * 8;
+    final usableWidth = paperWidth - leftMargin;
+    final offset = leftMargin +
+        (alignment == 'right'
+            ? math.max(0, usableWidth - contentWidth)
+            : alignment == 'center'
+                ? math.max(0, (usableWidth - contentWidth) ~/ 2)
+                : 0);
+    final data = List<int>.filled(widthBytes * source.height, 0);
+    for (var y = 0; y < source.height; y++) {
+      for (var x = 0; x < contentWidth && x + offset < paperWidth; x++) {
+        final byte = source.data[y * source.widthBytes + (x ~/ 8)];
+        if ((byte & (0x80 >> (x % 8))) != 0) {
+          data[y * widthBytes + ((x + offset) ~/ 8)] |=
+              0x80 >> ((x + offset) % 8);
+        }
+      }
+    }
+    return ThermalRaster(widthBytes: widthBytes, height: source.height, data: data);
   }
 
   static List<int> imageToEscPos(
@@ -130,17 +165,28 @@ class RasterPrint {
     // Leave positioning to the printer's print-head alignment command.
     // Sending a naturally-sized raster lets ESC a align it inside the
     // printer's configured printable area instead of baking offsets in pixels.
-    final raster = _decodedToRaster(
+    final margin = maxWidth == 384 ? 8 : 0;
+    final sourceRaster = _decodedToRaster(
       scaled,
-      maxWidth: maxWidth,
+      maxWidth: maxWidth - margin,
       maxHeight: maxHeightDots,
       threshold: threshold,
     );
-    final justification = alignment == 'left'
+    final raster = _positionRaster(
+      sourceRaster,
+      paperWidth: maxWidth,
+      leftMargin: margin,
+      alignment: alignment,
+    );
+    // 58mm output is positioned in a full-width raster so its fixed
+    // 8-dot left margin is preserved regardless of printer alignment.
+    final justification = margin > 0
         ? 0
-        : alignment == 'right'
-            ? 2
-            : 1;
+        : alignment == 'left'
+            ? 0
+            : alignment == 'right'
+                ? 2
+                : 1;
     return <int>[
       0x1B, 0x40, // Initialize printer.
       0x1B, 0x61, justification, // ESC a: printer-side justification.
