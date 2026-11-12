@@ -20,8 +20,10 @@ class PrinterBridge {
       .receiveBroadcastStream()
       .map((event) => Map<dynamic, dynamic>.from(event));
 
-  Future<List<PrinterDevice>> devices() async {
-    final list = await _method.invokeMethod<List<dynamic>>('discoverDevices');
+  Future<List<PrinterDevice>> devices({String transport = 'bluetooth'}) async {
+    final list = await _method.invokeMethod<List<dynamic>>(
+      'discoverDevices', {'transport': transport},
+    );
     return (list ?? [])
         .map((item) => PrinterDevice.fromMap(
               Map<dynamic, dynamic>.from(item),
@@ -37,9 +39,10 @@ class PrinterBridge {
     });
   }
 
-  Future<Map<dynamic, dynamic>> connectionStatus({bool restore = false}) async {
+  Future<Map<dynamic, dynamic>> connectionStatus({bool restore = false, String transport = 'bluetooth'}) async {
     final result = await _method.invokeMethod<Map<dynamic, dynamic>>(
       restore ? 'restoreConnection' : 'connectionStatus',
+      restore ? {'transport': transport} : null,
     );
     return result ?? <dynamic, dynamic>{'connected': false};
   }
