@@ -41,8 +41,11 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build arm64-v8a release APK
-        run: flutter build apk --release --target-platform android-arm64 --analyze-size --split-debug-info=build/symbols
+      - name: Analyze arm64-v8a release size
+        run: flutter build apk --release --target-platform android-arm64 --analyze-size
+
+      - name: Build optimized arm64-v8a release APK
+        run: flutter build apk --release --target-platform android-arm64 --split-debug-info=build/symbols
 
       - name: Report APK size
         run: ls -lh build/app/outputs/flutter-apk/app-release.apk
