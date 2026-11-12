@@ -155,7 +155,12 @@ class XPPrintService : PrintService() {
                 val page = renderer.openPage(pageIndex)
                 try {
                     val printableWidth = paperDots - LEFT_MARGIN
-                    val scale = printableWidth.toFloat() / page.width
+                    // Fit the complete page inside both the printable width and the
+                    // maximum supported roll length. Never clamp bitmap height after
+                    // calculating a larger transform, otherwise the page is cropped.
+                    val widthScale = printableWidth.toFloat() / page.width
+                    val heightScale = MAX_PAGE_HEIGHT.toFloat() / page.height
+                    val scale = minOf(widthScale, heightScale)
                     val height = (page.height * scale).toInt().coerceIn(1, MAX_PAGE_HEIGHT)
                     val bitmap = Bitmap.createBitmap(paperDots, height, Bitmap.Config.ARGB_8888)
                     try {
@@ -165,8 +170,7 @@ class XPPrintService : PrintService() {
                             postTranslate(LEFT_MARGIN.toFloat(), 0f)
                         }
                         page.render(bitmap, null, transform, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-                        writeInSafeChunks(output, bitmapToEscPos(bitmap))
-
+                        writeBitmapInStripes(output, bitmap)
                     } finally {
                         bitmap.recycle()
                     }
@@ -193,27 +197,39 @@ class XPPrintService : PrintService() {
         }
     }
 
-    private fun bitmapToEscPos(bitmap: Bitmap): ByteArray {
+    /**
+     * Send raster data as small independent bands. Many low-cost ESC/POS printers
+     * cannot reliably buffer a full long-page GS v 0 command in one operation.
+     */
+    private fun writeBitmapInStripes(output: java.io.OutputStream, bitmap: Bitmap) {
         val widthBytes = (bitmap.width + 7) / 8
-        val pixels = ByteArray(widthBytes * bitmap.height)
-        for (y in 0 until bitmap.height) {
-            for (x in 0 until bitmap.width) {
-                val color = bitmap.getPixel(x, y)
-                val luminance = (Color.red(color) * 299 + Color.green(color) * 587 +
-                    Color.blue(color) * 114) / 1000
-                if (luminance < THRESHOLD) {
-                    val index = y * widthBytes + x / 8
-                    pixels[index] = (pixels[index].toInt() or (0x80 shr (x % 8))).toByte()
+        var top = 0
+        while (top < bitmap.height) {
+            check(!cancelRequested) { "تم إلغاء الطباعة" }
+            val rows = minOf(RASTER_STRIPE_ROWS, bitmap.height - top)
+            val pixels = ByteArray(widthBytes * rows)
+            for (row in 0 until rows) {
+                for (x in 0 until bitmap.width) {
+                    val color = bitmap.getPixel(x, top + row)
+                    val luminance = (Color.red(color) * 299 + Color.green(color) * 587 +
+                        Color.blue(color) * 114) / 1000
+                    if (luminance < THRESHOLD) {
+                        val index = row * widthBytes + x / 8
+                        pixels[index] = (pixels[index].toInt() or (0x80 shr (x % 8))).toByte()
+                    }
                 }
             }
+            val header = byteArrayOf(
+                0x1B, 0x61, 0x00,
+                0x1D, 0x76, 0x30, 0x00,
+                (widthBytes and 0xFF).toByte(), ((widthBytes shr 8) and 0xFF).toByte(),
+                (rows and 0xFF).toByte(), ((rows shr 8) and 0xFF).toByte()
+            )
+            writeInSafeChunks(output, header + pixels)
+            top += rows
         }
-        val header = byteArrayOf(
-            0x1B, 0x61, 0x00,
-            0x1D, 0x76, 0x30, 0x00,
-            (widthBytes and 0xFF).toByte(), ((widthBytes shr 8) and 0xFF).toByte(),
-            (bitmap.height and 0xFF).toByte(), ((bitmap.height shr 8) and 0xFF).toByte()
-        )
-        return header + pixels + byteArrayOf(0x0A)
+        // A single line feed separates this page from the next page.
+        writeInSafeChunks(output, byteArrayOf(0x0A))
     }
 
     private inner class XpPrinterDiscoverySession : PrinterDiscoverySession() {
@@ -271,5 +287,6 @@ class XPPrintService : PrintService() {
         private const val THRESHOLD = 170
         private const val MAX_PAGE_HEIGHT = 12000
         private const val BT_WRITE_CHUNK = 1024
+        private const val RASTER_STRIPE_ROWS = 256
     }
 }
