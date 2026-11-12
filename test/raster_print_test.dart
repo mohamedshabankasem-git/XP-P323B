@@ -3,28 +3,28 @@ import 'package:image/image.dart' as img;
 import 'package:xp_p323b/printer/raster_print.dart';
 
 void main() {
-  test('encodes a monochrome image as an ESC/POS raster command', () {
+  test('encodes a monochrome image and delegates alignment to ESC/POS', () {
     final source = img.Image(width: 8, height: 1);
     for (var x = 0; x < 8; x++) {
       source.setPixelRgb(x, 0, 0, 0, 0);
     }
 
-    final encoded = img.encodePng(source);
-    final command = RasterPrint.imageToEscPos(encoded);
+    final command = RasterPrint.imageToEscPos(img.encodePng(source));
 
-    // The image is centered on the printer's full 576-dot printable width.
+    // ESC @, ESC a center, GS v 0 raster header (one byte wide).
     expect(
       command.take(10).toList(),
-      <int>[0x1B, 0x40, 0x1D, 0x76, 0x30, 0x00, 72, 0, 1, 0],
+      <int>[0x1B, 0x40, 0x1B, 0x61, 1, 0x1D, 0x76, 0x30, 0x00, 1],
     );
-    expect(command[10 + 35], 0x0F);
-    expect(command[10 + 36], 0xF0);
-    expect(command.sublist(10, 10 + 35).every((byte) => byte == 0), isTrue);
-    expect(command.sublist(10 + 37, 10 + 72).every((byte) => byte == 0), isTrue);
-    expect(command.sublist(command.length - 2), <int>[0x0A, 0x0A]);
+    expect(command[10], 0x00); // Width high byte.
+    expect(command[11], 0x01); // Height low byte.
+    expect(command[12], 0xFF);
+    expect(command.sublist(command.length - 5), <int>[
+      0x0A, 0x0A, 0x1B, 0x61, 0x00,
+    ]);
   });
 
-  test('applies left and right image alignment', () {
+  test('uses printer-side left and right image alignment', () {
     final source = img.Image(width: 8, height: 1);
     for (var x = 0; x < 8; x++) {
       source.setPixelRgb(x, 0, 0, 0, 0);
@@ -42,10 +42,11 @@ void main() {
       alignment: 'right',
     );
 
-    expect(left.sublist(6, 10), <int>[2, 0, 1, 0]);
-    expect(left.sublist(10, 12), <int>[0xFF, 0x00]);
-    expect(right.sublist(6, 10), <int>[2, 0, 1, 0]);
-    expect(right.sublist(10, 12), <int>[0x00, 0xFF]);
+    // Raster data remains identical and content-sized; only ESC a changes.
+    expect(left.sublist(2, 5), <int>[0x1B, 0x61, 0]);
+    expect(right.sublist(2, 5), <int>[0x1B, 0x61, 2]);
+    expect(left.sublist(10, 11), <int>[0xFF]);
+    expect(right.sublist(10, 11), <int>[0xFF]);
   });
 
   test('respects a narrower configured paper width', () {
