@@ -171,7 +171,10 @@ class RasterPrint {
               ? TextAlign.right
               : TextAlign.center,
     );
-    painter.layout(maxWidth: (widthDots - 16).toDouble());
+    painter.layout(
+      minWidth: (widthDots - 16).toDouble(),
+      maxWidth: (widthDots - 16).toDouble(),
+    );
     final height = math.max(48, painter.height.ceil() + 24).toInt();
     if (height > maxHeight) {
       throw ArgumentError('النص طويل جداً؛ قسّمه إلى صفحات أقصر');
@@ -205,7 +208,11 @@ class RasterPrint {
       widthDots: widthDots,
       alignment: alignment,
     );
-    return imageToEscPosAsync(png, maxWidth: widthDots);
+    return imageToEscPosAsync(
+      png,
+      maxWidth: widthDots,
+      alignment: alignment,
+    );
   }
 }
 
