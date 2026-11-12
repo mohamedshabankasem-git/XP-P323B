@@ -42,7 +42,18 @@ jobs:
         run: flutter test
 
       - name: Build arm64-v8a release APK
-        run: flutter build apk --release --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64 --analyze-size --split-debug-info=build/symbols
+
+      - name: Report APK size
+        run: ls -lh build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload arm64-v8a debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: xp-p323b-arm64-v8a-symbols
+          path: build/symbols/
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Upload arm64-v8a release APK
         uses: actions/upload-artifact@v4
