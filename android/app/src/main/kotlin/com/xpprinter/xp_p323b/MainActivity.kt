@@ -2,6 +2,7 @@ package com.xpprinter.xp_p323b
 
 import android.Manifest
 import android.app.PendingIntent
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.content.*
@@ -80,6 +81,7 @@ class MainActivity : FlutterActivity() {
                         result.success(
                             mapOf(
                                 "paperWidthMm" to prefs.getInt("paperWidthMm", 80),
+                                "paperWidthDots" to prefs.getInt("paperWidthDots", 576),
                                 "printAlignment" to prefs.getString("printAlignment", "center"),
                             ),
                         )
@@ -95,9 +97,11 @@ class MainActivity : FlutterActivity() {
                     }
                     "setPaperWidth" -> {
                         val width = call.argument<Int>("paperWidthMm") ?: 80
+                        val dots = call.argument<Int>("paperWidthDots") ?: if (width == 58) 392 else 576
                         require(width == 58 || width == 80) { "Unsupported paper width" }
+                        require((width == 58 && (dots == 384 || dots == 392)) || (width == 80 && dots == 576)) { "Unsupported print width" }
                         getSharedPreferences("printer", MODE_PRIVATE).edit()
-                            .putInt("paperWidthMm", width).apply()
+                            .putInt("paperWidthMm", width).putInt("paperWidthDots", dots).apply()
                         result.success(true)
                     }
                     "connect" -> {
@@ -399,6 +403,7 @@ class MainActivity : FlutterActivity() {
                             "name" to (it.name ?: "Bluetooth printer"),
                             "address" to it.address,
                             "transport" to "bluetooth",
+                            "deviceType" to bluetoothDeviceType(it.bluetoothClass),
                         ),
                     )
                 }
@@ -411,10 +416,33 @@ class MainActivity : FlutterActivity() {
                     "name" to (it.productName ?: "USB printer"),
                     "address" to it.deviceId.toString(),
                     "transport" to "usb",
+                    "deviceType" to usbDeviceType(it),
                 ),
             )
         }
         return output
+    }
+
+    private fun bluetoothDeviceType(deviceClass: BluetoothClass?): String =
+        when (deviceClass?.majorDeviceClass) {
+            BluetoothClass.Device.Major.PHONE -> "phone"
+            BluetoothClass.Device.Major.AUDIO_VIDEO -> "audio"
+            BluetoothClass.Device.Major.COMPUTER -> "computer"
+            BluetoothClass.Device.Major.PERIPHERAL -> "printer"
+            else -> "other"
+        }
+
+    private fun usbDeviceType(device: android.hardware.usb.UsbDevice): String {
+        if (device.deviceClass == UsbConstants.USB_CLASS_PRINTER ||
+            (0 until device.interfaceCount).any {
+                device.getInterface(it).interfaceClass == UsbConstants.USB_CLASS_PRINTER
+            }) return "printer"
+        return when (device.deviceClass) {
+            1 -> "audio"
+            2 -> "phone"
+            3 -> "computer"
+            else -> "other"
+        }
     }
 
     private fun btPermission(): Boolean {
