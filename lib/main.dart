@@ -49,6 +49,7 @@ class _HomeState extends State<Home> {
   bool busy = false;
   bool printingShare = false;
   String? sharePreviewPath;
+  Uint8List? sharePreviewBytes;
   String? sharePreviewLabel;
   bool preparingPreview = false;
 
@@ -110,30 +111,45 @@ class _HomeState extends State<Home> {
     setState(() {
       preparingPreview = true;
       sharePreviewPath = null;
+      sharePreviewBytes = null;
       sharePreviewLabel = null;
     });
     try {
       final item = sharedItems.isNotEmpty ? sharedItems.first : null;
       if (item == null) {
         if (sharedText.trim().isNotEmpty) {
-          sharePreviewLabel = 'معاينة النص';
+          sharePreviewBytes = Uint8List.fromList(await RasterPrint.textToPng(
+            sharedText,
+            widthDots: printWidthDots,
+            alignment: printAlignment,
+          ));
+          sharePreviewLabel = 'معاينة النص كما سيُطبع';
         }
       } else {
         final path = item['path']?.toString() ?? '';
         final mime = (item['mimeType']?.toString() ?? '').toLowerCase();
         if (path.isEmpty) throw StateError('مسار الملف غير موجود');
         if (mime.startsWith('image/')) {
-          sharePreviewPath = path;
-          sharePreviewLabel = 'معاينة الصورة كما ستُرسل للطباعة';
+          sharePreviewBytes = RasterPrint.imageToPreviewPng(
+            await File(path).readAsBytes(),
+            maxWidth: printWidthDots,
+            alignment: printAlignment,
+          );
+          sharePreviewLabel = 'معاينة حرارية مطابقة لإعدادات الطباعة';
         } else if (mime == 'application/pdf' || path.toLowerCase().endsWith('.pdf')) {
           final count = await bridge.pdfPageCount(path);
           if (count > 0) {
-            sharePreviewPath = await bridge.renderPdfPage(
+            final renderedPath = await bridge.renderPdfPage(
               path,
               pageIndex: 0,
               widthDots: printWidthDots,
             );
-            sharePreviewLabel = 'معاينة الصفحة الأولى من PDF ($count صفحة)';
+            sharePreviewBytes = RasterPrint.imageToPreviewPng(
+              await File(renderedPath).readAsBytes(),
+              maxWidth: printWidthDots,
+              alignment: printAlignment,
+            );
+            sharePreviewLabel = 'معاينة حرارية للصفحة الأولى من PDF ($count صفحة)';
           }
         } else {
           sharePreviewLabel = item['name']?.toString() ?? 'نوع ملف غير مدعوم للمعاينة';
@@ -464,20 +480,14 @@ class _HomeState extends State<Home> {
                     alignment: Alignment.topCenter,
                     child: preparingPreview
                         ? const Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())
-                        : sharePreviewPath != null
-                            ? Image.file(
-                                File(sharePreviewPath!),
+                        : sharePreviewBytes != null
+                            ? Image.memory(
+                                sharePreviewBytes!,
                                 fit: BoxFit.contain,
+                                filterQuality: FilterQuality.none,
                                 errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(24), child: Text('تعذر عرض الملف')),
                               )
-                            : sharedText.trim().isNotEmpty
-                                ? Container(
-                                    width: paperWidthDots.toDouble(),
-                                    color: Colors.white,
-                                    padding: const EdgeInsets.all(8),
-                                    child: Text(sharedText, textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.black, fontSize: 14, height: 1.35)),
-                                  )
-                                : Padding(
+                            : Padding(
                                     padding: const EdgeInsets.all(24),
                                     child: Text(sharePreviewLabel ?? 'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا'),
                                   ),
