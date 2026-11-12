@@ -46,7 +46,7 @@ class _HomeState extends State<Home> {
   bool busy = false;
   bool printingShare = false;
 
-  int get printWidthDots => paperWidthMm == 58 ? 384 : 576;
+  int get printWidthDots => paperWidthMm == 58 ? 392 : 576;
 
   @override
   void initState() {
@@ -411,25 +411,15 @@ class _HomeState extends State<Home> {
           const SizedBox(height: 8),
           const Text('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.'),
           const SizedBox(height: 12),
-          RadioGroup<int>(
-            groupValue: paperWidthMm,
-            onChanged: (value) {
-              if (value != null) changePaperWidth(value);
-            },
-            child: const Column(
-              children: [
-                RadioListTile<int>(
-                  value: 58,
-                  title: Text('58 مم'),
-                  subtitle: Text('عرض طباعة 384 نقطة'),
-                ),
-                RadioListTile<int>(
-                  value: 80,
-                  title: Text('80 مم'),
-                  subtitle: Text('حد أقصى للطباعة 576 نقطة (72 مم فعلياً)'),
-                ),
-              ],
-            ),
+          DropdownButtonFormField<int>(
+            key: ValueKey(paperWidthMm),
+            initialValue: paperWidthMm,
+            decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
+            items: const [
+              DropdownMenuItem(value: 58, child: Text('58 مم — 392 نقطة')),
+              DropdownMenuItem(value: 80, child: Text('80 مم — 576 نقطة')),
+            ],
+            onChanged: (value) { if (value != null) changePaperWidth(value); },
           ),
           const SizedBox(height: 12),
           const Text('محاذاة الطباعة'),
