@@ -74,9 +74,9 @@ class MainActivity : FlutterActivity() {
         method?.setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
-                    "discoverDevices" -> result.success(discover())
+                    "discoverDevices" -> { val transport = call.argument<String>("transport") ?: "bluetooth"; result.success(discover(transport)) }
                     "connectionStatus" -> result.success(connectionStatus())
-                    "restoreConnection" -> runPrinterTask(result) { restoreConnection() }
+                    "restoreConnection" -> { val transport = call.argument<String>("transport") ?: "bluetooth"; runPrinterTask(result) { restoreConnection(transport) } }
                     "getSettings" -> {
                         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
                         result.success(
@@ -389,10 +389,10 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun discover(): List<Map<String, String>> {
+    private fun discover(transport: String): List<Map<String, String>> {
         val output = mutableListOf<Map<String, String>>()
         val adapter = BluetoothAdapter.getDefaultAdapter()
-        if (adapter != null && btPermission()) {
+        if (transport == "bluetooth" && adapter != null && btPermission()) {
             if (!adapter.isEnabled) {
                 // Ask Android to enable Bluetooth through the system confirmation UI.
                 // The user remains in control; the app never silently toggles Bluetooth.
@@ -410,6 +410,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+        if (transport == "usb") {
         val manager = getSystemService(Context.USB_SERVICE) as UsbManager
         manager.deviceList.values.forEach {
             output.add(
@@ -420,6 +421,7 @@ class MainActivity : FlutterActivity() {
                     "deviceType" to usbDeviceType(it),
                 ),
             )
+        }
         }
         return output
     }
@@ -484,12 +486,13 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun restoreConnection(): Map<String, Any?> {
+    private fun restoreConnection(requestedTransport: String): Map<String, Any?> {
         if ((bt?.isConnected == true) || usb != null) return connectionStatus()
         val prefs = getSharedPreferences("printer", MODE_PRIVATE)
         val address = prefs.getString("lastAddress", null) ?: return connectionStatus()
         val transport = prefs.getString("lastTransport", "bluetooth") ?: "bluetooth"
         val name = prefs.getString("lastName", "XP Printer") ?: "XP Printer"
+        if (transport != requestedTransport) return connectionStatus()
         try {
             if (transport == "usb") connectUsb(address, name) else connectBt(address, name)
         } catch (_: Exception) {
