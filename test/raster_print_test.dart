@@ -18,7 +18,8 @@ void main() {
     );
     expect(command[10], 0x00); // Width high byte.
     expect(command[11], 0x01); // Height low byte.
-    expect(command[12], 0xFF);
+    expect(command[12], 0x00); // Height high byte.
+    expect(command[13], 0xFF);
     expect(command.sublist(command.length - 5), <int>[
       0x0A, 0x0A, 0x1B, 0x61, 0x00,
     ]);
@@ -45,8 +46,8 @@ void main() {
     // Raster data remains identical and content-sized; only ESC a changes.
     expect(left.sublist(2, 5), <int>[0x1B, 0x61, 0]);
     expect(right.sublist(2, 5), <int>[0x1B, 0x61, 2]);
-    expect(left.sublist(10, 11), <int>[0xFF]);
-    expect(right.sublist(10, 11), <int>[0xFF]);
+    expect(left.sublist(13, 14), <int>[0xFF]);
+    expect(right.sublist(13, 14), <int>[0xFF]);
   });
 
   test('respects a narrower configured paper width', () {
