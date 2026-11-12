@@ -446,8 +446,9 @@ class MainActivity : FlutterActivity() {
                 else -> "other"
             }
             BluetoothClass.Device.Major.IMAGING -> when (deviceClass.deviceClass and 0x00F0) {
-                0x0080 -> "printer"
-                0x0010, 0x0020 -> "camera"
+                0x0040 -> "printer"
+                0x0020 -> "camera"
+                0x0030 -> "scanner"
                 else -> "imaging"
             }
             else -> "other"
