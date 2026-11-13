@@ -309,6 +309,7 @@ class RasterPrint {
     int fontSize = 28,
     int widthDots = maxWidthDots,
     String alignment = 'center',
+    String mode = 'floydSteinberg',
   }) async {
     final png = await textToPng(
       text,
@@ -320,6 +321,7 @@ class RasterPrint {
       png,
       maxWidth: widthDots,
       alignment: alignment,
+      mode: mode,
     );
   }
 }
