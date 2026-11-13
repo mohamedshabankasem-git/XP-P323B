@@ -124,7 +124,6 @@ class _HomeState extends State<Home> {
             sharedText,
             widthDots: printWidthDots,
             alignment: printAlignment,
-            mode: rasterMode,
           );
           sharePreviewBytes = RasterPrint.imageToPreviewPng(
             textPng,
