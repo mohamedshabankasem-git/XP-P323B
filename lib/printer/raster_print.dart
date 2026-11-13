@@ -27,6 +27,7 @@ class RasterPrint {
     int maxWidth = maxWidthDots,
     int maxHeight = maxHeightDots,
     int threshold = 160,
+    String mode = 'floydSteinberg',
   }) {
     final decoded = img.decodeImage(Uint8List.fromList(encodedImage));
     if (decoded == null) {
@@ -37,6 +38,7 @@ class RasterPrint {
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       threshold: threshold,
+      mode: mode,
     );
   }
 
@@ -45,6 +47,7 @@ class RasterPrint {
     required int maxWidth,
     required int maxHeight,
     required int threshold,
+    required String mode,
   }) {
     final scale = math.min(
       1.0,
@@ -63,6 +66,7 @@ class RasterPrint {
 
     final bytesPerRow = (raster.width + 7) ~/ 8;
     final pixels = List<int>.filled(bytesPerRow * raster.height, 0);
+    final luminance = List<double>.filled(raster.width * raster.height, 255);
     for (var y = 0; y < raster.height; y++) {
       for (var x = 0; x < raster.width; x++) {
         final pixel = raster.getPixel(x, y);
@@ -70,9 +74,54 @@ class RasterPrint {
         final red = pixel.r * alpha + 255 * (1 - alpha);
         final green = pixel.g * alpha + 255 * (1 - alpha);
         final blue = pixel.b * alpha + 255 * (1 - alpha);
-        final luminance = 0.299 * red + 0.587 * green + 0.114 * blue;
-        if (luminance < threshold) {
-          pixels[y * bytesPerRow + (x ~/ 8)] |= 0x80 >> (x % 8);
+        luminance[y * raster.width + x] = 0.299 * red + 0.587 * green + 0.114 * blue;
+      }
+    }
+    const ordered = [
+      [0, 8, 2, 10],
+      [12, 4, 14, 6],
+      [3, 11, 1, 9],
+      [15, 7, 13, 5],
+    ];
+    void setBlack(int x, int y) {
+      pixels[y * bytesPerRow + (x ~/ 8)] |= 0x80 >> (x % 8);
+    }
+    if (mode == 'floydSteinberg' || mode == 'atkinson') {
+      for (var y = 0; y < raster.height; y++) {
+        for (var x = 0; x < raster.width; x++) {
+          final index = y * raster.width + x;
+          final old = luminance[index].clamp(0.0, 255.0).toDouble();
+          final next = old < threshold ? 0.0 : 255.0;
+          if (next == 0) setBlack(x, y);
+          final error = old - next;
+          if (mode == 'floydSteinberg') {
+            void add(int dx, int dy, double factor) {
+              final nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < raster.width && ny < raster.height) {
+                luminance[ny * raster.width + nx] += error * factor;
+              }
+            }
+            add(1, 0, 7 / 16); add(-1, 1, 3 / 16);
+            add(0, 1, 5 / 16); add(1, 1, 1 / 16);
+          } else {
+            void add(int dx, int dy) {
+              final nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < raster.width && ny < raster.height) {
+                luminance[ny * raster.width + nx] += error / 8;
+              }
+            }
+            add(1, 0); add(2, 0); add(-1, 1); add(0, 1); add(1, 1); add(0, 2);
+          }
+        }
+      }
+    } else {
+      for (var y = 0; y < raster.height; y++) {
+        for (var x = 0; x < raster.width; x++) {
+          final value = luminance[y * raster.width + x];
+          final cutoff = mode == 'ordered'
+              ? (ordered[y % 4][x % 4] * 16 + 8).toDouble()
+              : threshold.toDouble();
+          if (value < cutoff) setBlack(x, y);
         }
       }
     }
@@ -87,11 +136,13 @@ class RasterPrint {
     List<int> encodedImage, {
     required int maxWidth,
     required String alignment,
+    String mode = 'floydSteinberg',
   }) {
     const margin = 8;
     final source = imageToRaster(
       encodedImage,
       maxWidth: maxWidth,
+      mode: mode,
     );
     final raster = _positionRaster(
       source,
@@ -140,6 +191,7 @@ class RasterPrint {
     int threshold = 160,
     int maxWidth = maxWidthDots,
     String alignment = 'center',
+    String mode = 'floydSteinberg',
   }) {
     final decoded = img.decodeImage(Uint8List.fromList(encodedImage));
     if (decoded == null) {
@@ -161,6 +213,7 @@ class RasterPrint {
       maxWidth: maxWidth,
       maxHeight: maxHeightDots,
       threshold: threshold,
+      mode: mode,
     );
     final raster = _positionRaster(
       sourceRaster,
@@ -189,12 +242,14 @@ class RasterPrint {
     int threshold = 160,
     int maxWidth = maxWidthDots,
     String alignment = 'center',
+    String mode = 'floydSteinberg',
   }) {
     return compute(_imageToEscPosWorker, <String, Object>{
       'bytes': Uint8List.fromList(encodedImage),
       'threshold': threshold,
       'maxWidth': maxWidth,
       'alignment': alignment,
+      'mode': mode,
     });
   }
 
@@ -275,5 +330,6 @@ List<int> _imageToEscPosWorker(Map<String, Object> args) {
     threshold: args['threshold']! as int,
     maxWidth: args['maxWidth']! as int,
     alignment: args['alignment']! as String,
+    mode: args['mode']! as String,
   );
 }
