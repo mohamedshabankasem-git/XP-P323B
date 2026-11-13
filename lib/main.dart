@@ -47,6 +47,7 @@ class _HomeState extends State<Home> {
   int paperWidthMm = 58;
   int paperWidthDots = 384;
   String printAlignment = 'left';
+  String rasterMode = 'floydSteinberg';
   bool busy = false;
   bool printingShare = false;
   String? sharePreviewPath;
@@ -123,6 +124,7 @@ class _HomeState extends State<Home> {
             sharedText,
             widthDots: printWidthDots,
             alignment: printAlignment,
+            mode: rasterMode,
           );
           sharePreviewBytes = RasterPrint.imageToPreviewPng(
             textPng,
@@ -140,6 +142,7 @@ class _HomeState extends State<Home> {
             await File(path).readAsBytes(),
             maxWidth: printWidthDots,
             alignment: printAlignment,
+            mode: rasterMode,
           );
           sharePreviewLabel = 'معاينة حرارية مطابقة لإعدادات الطباعة';
         } else if (mime == 'application/pdf' || path.toLowerCase().endsWith('.pdf')) {
@@ -154,6 +157,7 @@ class _HomeState extends State<Home> {
               await File(renderedPath).readAsBytes(),
               maxWidth: printWidthDots,
               alignment: printAlignment,
+              mode: rasterMode,
             );
             sharePreviewLabel = 'معاينة حرارية للصفحة الأولى من PDF ($count صفحة)';
           }
@@ -176,6 +180,7 @@ class _HomeState extends State<Home> {
           paperWidthDots = [400, 576].contains(settings['paperWidthDots']) ? settings['paperWidthDots'] as int : 384;
           paperWidthMm = paperWidthDots == 576 ? 80 : 58;
           printAlignment = settings['printAlignment'] as String;
+          rasterMode = settings['rasterMode'] as String;
           transportFilter = settings['lastTransport'] as String;
         });
       }
@@ -304,7 +309,7 @@ class _HomeState extends State<Home> {
         if (mime.startsWith('image/')) {
           final bytes = await File(path).readAsBytes();
           await bridge.write(
-            await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment),
+            await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode),
           );
           printed++;
         } else if (mime == 'application/pdf' ||
@@ -326,6 +331,7 @@ class _HomeState extends State<Home> {
                 bytes,
                 maxWidth: printWidthDots,
                 alignment: printAlignment,
+                mode: rasterMode,
               );
               await bridge.write(command);
               printed++;
@@ -344,6 +350,7 @@ class _HomeState extends State<Home> {
             sharedText,
             widthDots: printWidthDots,
             alignment: printAlignment,
+            mode: rasterMode,
           ),
         );
         printed++;
@@ -474,7 +481,7 @@ class _HomeState extends State<Home> {
           OutlinedButton(
             onPressed: selected == null
                 ? null
-                : () => printBytes(EscPos.testPage()),
+                : printTestPage,
             child: const Text('طباعة صفحة اختبار'),
           ),
           const Text(
@@ -555,6 +562,29 @@ class _HomeState extends State<Home> {
         ],
       );
 
+  Future<void> changeRasterMode(String mode) async {
+    try {
+      await bridge.setRasterMode(mode);
+      if (mounted) setState(() => rasterMode = mode);
+      await _prepareSharePreview();
+      toast('تم حفظ طريقة تحويل الصورة للطباعة');
+    } catch (error) {
+      toast('تعذر حفظ طريقة التحويل: $error');
+    }
+  }
+
+  Future<void> printTestPage() async {
+    try {
+      final icon = await bridge.appIcon();
+      final logo = icon.isEmpty ? <int>[] : await RasterPrint.imageToEscPosAsync(
+        icon, maxWidth: printWidthDots, alignment: 'center', mode: rasterMode,
+      );
+      await printBytes([...EscPos.testPage(), ...logo]);
+    } catch (error) {
+      toast('تعذر تجهيز صفحة الاختبار: $error');
+    }
+  }
+
   Future<void> changeAlignment(String alignment) async {
     try {
       await bridge.setPrintAlignment(alignment);
@@ -602,6 +632,23 @@ class _HomeState extends State<Home> {
             onChanged: (value) {
               if (value != null) changeAlignment(value);
             },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: ValueKey(rasterMode),
+            initialValue: rasterMode,
+            decoration: const InputDecoration(
+              labelText: 'طريقة تحويل الصورة إلى أبيض وأسود',
+              border: OutlineInputBorder(),
+              helperText: 'المعاينة والطباعة تستخدمان نفس طريقة التحويل',
+            ),
+            items: const [
+              DropdownMenuItem(value: 'floydSteinberg', child: Text('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)')),
+              DropdownMenuItem(value: 'atkinson', child: Text('Dithering - Atkinson (نقاط أخف)')),
+              DropdownMenuItem(value: 'ordered', child: Text('Ordered Dithering (نمط شبكي)')),
+              DropdownMenuItem(value: 'threshold', child: Text('Black & White (أبيض وأسود مباشر)')),
+            ],
+            onChanged: (value) { if (value != null) changeRasterMode(value); },
           ),
           const Divider(),
           Text('إدارة الطابعة', style: Theme.of(context).textTheme.titleMedium),
