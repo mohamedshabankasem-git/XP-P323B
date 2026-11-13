@@ -447,6 +447,7 @@ class _HomeState extends State<Home> {
             ),
           ),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             key: ValueKey(transportFilter),
             initialValue: transportFilter,
             decoration: const InputDecoration(labelText: 'طريقة الاتصال', border: OutlineInputBorder()),
@@ -604,6 +605,7 @@ class _HomeState extends State<Home> {
           const Text('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.'),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
+            isExpanded: true,
             key: ValueKey('$paperWidthMm:$paperWidthDots'),
             initialValue: paperWidthDots,
             decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
@@ -618,6 +620,7 @@ class _HomeState extends State<Home> {
           const Text('محاذاة الطباعة'),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             key: ValueKey(printAlignment),
             initialValue: printAlignment,
             decoration: const InputDecoration(
@@ -635,6 +638,7 @@ class _HomeState extends State<Home> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             key: ValueKey(rasterMode),
             initialValue: rasterMode,
             decoration: const InputDecoration(
@@ -643,10 +647,10 @@ class _HomeState extends State<Home> {
               helperText: 'المعاينة والطباعة تستخدمان نفس طريقة التحويل',
             ),
             items: const [
-              DropdownMenuItem(value: 'floydSteinberg', child: Text('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)')),
-              DropdownMenuItem(value: 'atkinson', child: Text('Dithering - Atkinson (نقاط أخف)')),
-              DropdownMenuItem(value: 'ordered', child: Text('Ordered Dithering (نمط شبكي)')),
-              DropdownMenuItem(value: 'threshold', child: Text('Black & White (أبيض وأسود مباشر)')),
+              DropdownMenuItem(value: 'floydSteinberg', child: Text('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)', maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'atkinson', child: Text('Dithering - Atkinson (نقاط أخف)', maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'ordered', child: Text('Ordered Dithering (نمط شبكي)', maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'threshold', child: Text('Black & White (أبيض وأسود مباشر)', maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
             onChanged: (value) { if (value != null) changeRasterMode(value); },
           ),
