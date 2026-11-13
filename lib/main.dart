@@ -130,6 +130,7 @@ class _HomeState extends State<Home> {
             textPng,
             maxWidth: printWidthDots,
             alignment: printAlignment,
+            mode: rasterMode,
           );
           sharePreviewLabel = 'معاينة النص كما سيُطبع';
         }
