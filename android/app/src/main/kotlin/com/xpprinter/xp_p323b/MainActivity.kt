@@ -85,6 +85,7 @@ class MainActivity : FlutterActivity() {
                                 "paperWidthMm" to prefs.getInt("paperWidthMm", 58),
                                 "paperWidthDots" to prefs.getInt("paperWidthDots", 384).let { if (it == 392) 384 else it },
                                 "printAlignment" to prefs.getString("printAlignment", "left"),
+                                "rasterMode" to prefs.getString("rasterMode", "floydSteinberg"),
                                 "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
                             ),
                         )
@@ -94,6 +95,29 @@ class MainActivity : FlutterActivity() {
                         require(transport == "bluetooth" || transport == "usb") { "Unsupported connection transport" }
                         getSharedPreferences("printer", MODE_PRIVATE).edit().putString("lastTransport", transport).apply()
                         result.success(true)
+                    }
+                    "setRasterMode" -> {
+                        val mode = call.argument<String>("mode") ?: "floydSteinberg"
+                        require(mode in listOf("floydSteinberg", "atkinson", "ordered", "threshold")) {
+                            "Unsupported raster conversion mode"
+                        }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit()
+                            .putString("rasterMode", mode).apply()
+                        result.success(true)
+                    }
+                    "getAppIcon" -> {
+                        val drawable = packageManager.getApplicationIcon(packageName)
+                        val size = 192
+                        val bitmap = android.graphics.Bitmap.createBitmap(
+                            size, size, android.graphics.Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bitmap)
+                        drawable.setBounds(0, 0, size, size)
+                        drawable.draw(canvas)
+                        val stream = java.io.ByteArrayOutputStream()
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                        bitmap.recycle()
+                        result.success(stream.toByteArray())
                     }
                     "setPrintAlignment" -> {
                         val alignment = call.argument<String>("alignment") ?: "center"
