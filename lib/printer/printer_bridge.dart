@@ -54,6 +54,7 @@ class PrinterBridge {
       'paperWidthDots': (value?['paperWidthDots'] as num?)?.toInt() ?? 384,
       'printAlignment': value?['printAlignment']?.toString() ?? 'left',
       'lastTransport': value?['lastTransport']?.toString() == 'usb' ? 'usb' : 'bluetooth',
+      'rasterMode': value?['rasterMode']?.toString() ?? 'floydSteinberg',
     };
   }
 
@@ -62,6 +63,12 @@ class PrinterBridge {
 
   Future<void> setTransport(String transport) =>
       _method.invokeMethod('setTransport', {'transport': transport});
+
+  Future<void> setRasterMode(String mode) =>
+      _method.invokeMethod('setRasterMode', {'mode': mode});
+
+  Future<Uint8List> appIcon() async =>
+      (await _method.invokeMethod<Uint8List>('getAppIcon')) ?? Uint8List(0);
 
   Future<void> setPrintAlignment(String alignment) =>
       _method.invokeMethod('setPrintAlignment', {'alignment': alignment});
