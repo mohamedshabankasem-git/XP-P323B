@@ -48,6 +48,10 @@ class _HomeState extends State<Home> {
   int paperWidthDots = 384;
   String printAlignment = 'left';
   String rasterMode = 'floydSteinberg';
+  String appLanguage = 'ar';
+  String? customPrintImagePath;
+  String? customPrintImageName;
+  String tr(String ar) => appLanguage == 'ar' ? ar : ({'المشاركة':'Share','الإعدادات':'Settings','إعدادات الطباعة':'Print settings','الطباعة من المشاركة':'Print from sharing','إعادة طباعة العناصر المستلمة':'Print','إدراج صورة':'Add image','عرض اللغة':'Language','العربية':'Arabic','الإنجليزية':'English','الاتصال بالطابعة':'Printer connection','لا توجد جلسة طباعة نشطة':'No active printer session','غير متصل بالتطبيق':'Not connected','متصل عبر USB':'Connected via USB','متصل عبر Bluetooth':'Connected via Bluetooth','طريقة الاتصال':'Connection type','البحث واستعادة الاتصال':'Search and reconnect','جارٍ البحث والاستعادة...':'Searching and reconnecting...','بحث عن الطابعات':'Search for printers','إعادة الاتصال بالطابعة المحفوظة':'Reconnect saved printer','عرض الورق':'Paper width','محاذاة الطباعة':'Print alignment','يمين':'Right','منتصف':'Center','يسار':'Left','طريقة تحويل الصورة إلى أبيض وأسود':'Image conversion mode','إدارة الطابعة':'Printer management','طباعة صفحة اختبار':'Print test page','معاينة الطباعة':'Print preview','جارٍ تجهيز المعاينة...':'Preparing preview...','تمت إضافة الصورة إلى مهمة الطباعة':'Image added to print job','اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.':'Choose the roll width used for shared files.'})[ar] ?? ar);
   bool busy = false;
   bool printingShare = false;
   String? sharePreviewPath;
@@ -191,6 +195,9 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> searchDevices() async { setState(() => busy = true); try { devices..clear()..addAll(await bridge.devices(transport: transportFilter)); if (mounted) setState(() {}); } catch (error) { toast('تعذر البحث عن الأجهزة: $error'); } finally { if (mounted) setState(() => busy = false); } }
+  Future<void> reconnectSavedPrinter() async { setState(() => busy = true); try { final status = await bridge.connectionStatus(restore: true, transport: transportFilter); if (status['connected'] == true) { selected = PrinterDevice(status['name']?.toString() ?? 'XP Printer', status['address']?.toString() ?? '', status['transport']?.toString() ?? 'bluetooth'); toast('تمت إعادة الاتصال بالطابعة'); } else { selected = null; toast('تعذرت إعادة الاتصال بالطابعة المحفوظة'); } } catch (error) { toast('تعذرت إعادة الاتصال: $error'); } finally { if (mounted) setState(() => busy = false); } }
+
   Future<void> refresh() async {
     setState(() => busy = true);
     try {
@@ -282,9 +289,11 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> pickImageForPrint() async { try { final image = await bridge.pickImageForPrint(); if (image == null || image['path'] == null) return; final path = image['path']!.toString(); final bytes = await File(path).readAsBytes(); setState(() { customPrintImagePath = path; customPrintImageName = image['name']?.toString() ?? 'image'; sharePreviewBytes = RasterPrint.imageToPreviewPng(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode); sharePreviewLabel = tr('معاينة الطباعة'); }); toast(tr('تمت إضافة الصورة إلى مهمة الطباعة')); } catch (error) { toast('تعذر اختيار الصورة: $error'); } }
+
   Future<void> printShared({bool automatic = false}) async {
     if (printingShare) return;
-    if (sharedItems.isEmpty && sharedText.trim().isEmpty) {
+    if (sharedItems.isEmpty && sharedText.trim().isEmpty && customPrintImagePath == null) {
       if (!automatic) toast('لا توجد ملفات أو نصوص مستلمة للطباعة');
       return;
     }
@@ -344,6 +353,7 @@ class _HomeState extends State<Home> {
         }
       }
 
+      if (customPrintImagePath != null) { final bytes = await File(customPrintImagePath!).readAsBytes(); await bridge.write(await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode)); printed++; }
       if (sharedText.trim().isNotEmpty) {
         await bridge.write(
           await RasterPrint.textToEscPos(
@@ -430,38 +440,31 @@ class _HomeState extends State<Home> {
   Widget _printerSection() => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('الاتصال بالطابعة',
+          Text(tr('الاتصال بالطابعة'),
               style: Theme.of(context).textTheme.titleLarge),
           ListTile(
             leading: Icon(
               selected == null ? Icons.print_disabled : _deviceIcon(selected!),
               color: selected == null ? Colors.red : Colors.green,
             ),
-            title: Text(selected?.name ?? 'لا توجد جلسة طباعة نشطة'),
+            title: Text(selected?.name ?? tr('لا توجد جلسة طباعة نشطة')),
             subtitle: Text(
               selected == null
-                  ? 'غير متصل بالتطبيق'
-                  : selected!.transport == 'usb'
-                      ? 'متصل عبر USB'
-                      : 'متصل عبر Bluetooth',
+                  ? tr('غير متصل بالتطبيق') : selected!.transport == 'usb' ? tr('متصل عبر USB') : tr('متصل عبر Bluetooth'),
             ),
           ),
           DropdownButtonFormField<String>(
             isExpanded: true,
             key: ValueKey(transportFilter),
             initialValue: transportFilter,
-            decoration: const InputDecoration(labelText: 'طريقة الاتصال', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('طريقة الاتصال'), border: const OutlineInputBorder()),
             items: const [
               DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text('Bluetooth')])),
               DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text('USB')])),
             ],
             onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
-          FilledButton.icon(
-            onPressed: busy ? null : refresh,
-            icon: const Icon(Icons.search),
-            label: Text(busy ? 'جارٍ البحث والاستعادة...' : 'البحث واستعادة الاتصال'),
-          ),
+          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') searchDevices(); else reconnectSavedPrinter(); }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.arrow_drop_down), label: Text(busy ? '...' : tr('البحث واستعادة الاتصال')))),
           ...devices.where((device) => device.transport == transportFilter).map(
             (device) => Card(
               child: ListTile(
@@ -494,7 +497,7 @@ class _HomeState extends State<Home> {
   Widget _sharePage() => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('الطباعة من المشاركة',
+          Text(tr('الطباعة من المشاركة'),
               style: Theme.of(context).textTheme.titleLarge),
           const Text(
             'اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.',
@@ -542,11 +545,9 @@ class _HomeState extends State<Home> {
               ),
             ),
           ),
-          FilledButton.icon(
-            onPressed: printingShare ||
-                    (sharedItems.isEmpty && sharedText.trim().isEmpty)
-                ? null
-                : () => printShared(),
+          OutlinedButton.icon(onPressed: pickImageForPrint, icon: const Icon(Icons.add_photo_alternate_outlined), label: Text(tr('إدراج صورة'))),
+          if (customPrintImageName != null) ListTile(dense: true, leading: const Icon(Icons.image_outlined), title: Text(customPrintImageName!), trailing: IconButton(icon: const Icon(Icons.close), onPressed: () { setState(() { customPrintImagePath = null; customPrintImageName = null; }); _prepareSharePreview(); })),
+          FilledButton.icon(onPressed: printingShare || (sharedItems.isEmpty && sharedText.trim().isEmpty && customPrintImagePath == null) ? null : () => printShared(),
             icon: printingShare
                 ? const SizedBox(
                     width: 18,
@@ -555,7 +556,7 @@ class _HomeState extends State<Home> {
                   )
                 : const Icon(Icons.print),
             label: Text(
-              printingShare ? 'جارٍ تجهيز الطباعة...' : 'إعادة طباعة العناصر المستلمة',
+              printingShare ? 'جارٍ تجهيز الطباعة...' : tr('إعادة طباعة العناصر المستلمة'),
             ),
           ),
           const SizedBox(height: 10),
@@ -599,16 +600,18 @@ class _HomeState extends State<Home> {
   Widget _settingsPage() => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('إعدادات الطباعة',
+          DropdownButtonFormField<String>(isExpanded: true, value: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) setState(() => appLanguage = value); }),
+          const SizedBox(height: 12),
+          Text(tr('إعدادات الطباعة'),
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          const Text('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.'),
+          Text(tr('اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.')),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
             isExpanded: true,
             key: ValueKey('$paperWidthMm:$paperWidthDots'),
             initialValue: paperWidthDots,
-            decoration: const InputDecoration(labelText: 'عرض الورق', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('عرض الورق'), border: const OutlineInputBorder()),
             items: const [
               DropdownMenuItem(value: 384, child: Text('58 مم - 384 نقطة')),
               DropdownMenuItem(value: 400, child: Text('58 مم - 400 نقطة')),
@@ -617,7 +620,7 @@ class _HomeState extends State<Home> {
             onChanged: (value) { if (value != null) changePaperWidth(value == 576 ? 80 : 58, value); },
           ),
           const SizedBox(height: 12),
-          const Text('محاذاة الطباعة'),
+          Text(tr('محاذاة الطباعة')),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
             isExpanded: true,
@@ -628,9 +631,9 @@ class _HomeState extends State<Home> {
               helperText: 'تُطبّق على النصوص والصور والملفات المشتركة',
             ),
             items: const [
-              DropdownMenuItem(value: 'right', child: Text('يمين')),
-              DropdownMenuItem(value: 'center', child: Text('منتصف')),
-              DropdownMenuItem(value: 'left', child: Text('يسار')),
+              DropdownMenuItem(value: 'right', child: Text(tr('يمين'))),
+              DropdownMenuItem(value: 'center', child: Text(tr('منتصف'))),
+              DropdownMenuItem(value: 'left', child: Text(tr('يسار'))),
             ],
             onChanged: (value) {
               if (value != null) changeAlignment(value);
