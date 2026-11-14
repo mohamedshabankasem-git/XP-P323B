@@ -55,11 +55,15 @@ class PrinterBridge {
       'printAlignment': value?['printAlignment']?.toString() ?? 'left',
       'lastTransport': value?['lastTransport']?.toString() == 'usb' ? 'usb' : 'bluetooth',
       'rasterMode': value?['rasterMode']?.toString() ?? 'floydSteinberg',
+      'appLanguage': value?['appLanguage']?.toString() == 'en' ? 'en' : 'ar',
     };
   }
 
   Future<void> setPaperWidth(int width, int dots) =>
       _method.invokeMethod('setPaperWidth', {'paperWidthMm': width, 'paperWidthDots': dots});
+
+  Future<void> setLanguage(String language) =>
+      _method.invokeMethod('setLanguage', {'language': language});
 
   Future<void> setTransport(String transport) =>
       _method.invokeMethod('setTransport', {'transport': transport});
