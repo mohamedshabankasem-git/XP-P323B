@@ -49,6 +49,7 @@ class _HomeState extends State<Home> {
   String printAlignment = 'left';
   String rasterMode = 'floydSteinberg';
   String appLanguage = 'ar';
+  String shareBehavior = 'open';
   String? customPrintImagePath;
   String? customPrintImageName;
   String tr(String ar) {
@@ -62,6 +63,10 @@ class _HomeState extends State<Home> {
       'طباعة': 'Print',
       'إدراج صورة': 'Add image',
       'عرض اللغة': 'Language',
+      'سلوك المشاركة': 'Share behavior',
+      'فتح التطبيق': 'Open app',
+      'طباعة مباشرة دون فتح الواجهة': 'Print directly without opening the app',
+      'تم حفظ سلوك المشاركة': 'Share behavior saved',
       'العربية': 'Arabic',
       'الإنجليزية': 'English',
       'الاتصال بالطابعة': 'Printer connection',
@@ -127,7 +132,9 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void _onShared(Map<dynamic, dynamic> message) {
+  Future<void> _onShared(Map<dynamic, dynamic> message) async {
+    final saved = await bridge.settings();
+    shareBehavior = saved['shareBehavior'] as String;
     final rawItems = message['items'] as List? ?? const [];
     final items = rawItems
         .map((item) => Map<String, dynamic>.from(item as Map))
@@ -144,13 +151,15 @@ class _HomeState extends State<Home> {
       shareStatus = names.isNotEmpty
           ? names.join('، ')
           : (text.trim().isNotEmpty ? 'نص مستلم' : 'مشاركة فارغة');
-      tab = 0;
+      if (shareBehavior == 'open') tab = 0;
     });
 
+    if (shareBehavior == 'direct') {
+      await printShared(automatic: true);
+      await bridge.finishDirectShare();
+      return;
+    }
     _prepareSharePreview();
-
-    // The share shortcut is intended to print immediately when a printer is
-    // connected. If reconnection is needed, printShared attempts it first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) printShared(automatic: true);
     });
@@ -236,6 +245,7 @@ class _HomeState extends State<Home> {
           rasterMode = settings['rasterMode'] as String;
           transportFilter = settings['lastTransport'] as String;
           appLanguage = settings['appLanguage'] as String;
+          shareBehavior = settings['shareBehavior'] as String;
         });
       }
       await refresh();
@@ -425,6 +435,16 @@ class _HomeState extends State<Home> {
       toast('تعذر طباعة المشاركة: $error');
     } finally {
       if (mounted) setState(() => printingShare = false);
+    }
+  }
+
+  Future<void> changeShareBehavior(String behavior) async {
+    try {
+      await bridge.setShareBehavior(behavior);
+      if (mounted) setState(() => shareBehavior = behavior);
+      toast(tr('تم حفظ سلوك المشاركة'));
+    } catch (error) {
+      toast('تعذر حفظ سلوك المشاركة: $error');
     }
   }
 
@@ -671,6 +691,18 @@ class _HomeState extends State<Home> {
         padding: const EdgeInsets.all(16),
         children: [
           DropdownButtonFormField<String>(isExpanded: true, initialValue: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) changeLanguage(value); }),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            key: ValueKey(shareBehavior),
+            initialValue: shareBehavior,
+            decoration: InputDecoration(labelText: tr('سلوك المشاركة'), border: const OutlineInputBorder()),
+            items: [
+              DropdownMenuItem(value: 'open', child: Text(tr('فتح التطبيق'))),
+              DropdownMenuItem(value: 'direct', child: Text(tr('طباعة مباشرة دون فتح الواجهة'))),
+            ],
+            onChanged: (value) { if (value != null) changeShareBehavior(value); },
+          ),
           const SizedBox(height: 12),
           Text(tr('إعدادات الطباعة'),
               style: Theme.of(context).textTheme.titleLarge),
