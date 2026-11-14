@@ -121,6 +121,11 @@ class _HomeState extends State<Home> {
       sharePreviewLabel = null;
     });
     try {
+      if (customPrintImagePath != null) {
+        sharePreviewBytes = RasterPrint.imageToPreviewPng(await File(customPrintImagePath!).readAsBytes(), maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode);
+        sharePreviewLabel = tr('معاينة الطباعة');
+        return;
+      }
       final item = sharedItems.isNotEmpty ? sharedItems.first : null;
       if (item == null) {
         if (sharedText.trim().isNotEmpty) {
@@ -464,7 +469,7 @@ class _HomeState extends State<Home> {
             ],
             onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
-          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') searchDevices(); else reconnectSavedPrinter(); }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.arrow_drop_down), label: Text(busy ? '...' : tr('البحث واستعادة الاتصال')))),
+          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') searchDevices(); else reconnectSavedPrinter(); }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: ListTile(leading: const Icon(Icons.search), title: Text(busy ? '...' : tr('البحث واستعادة الاتصال')), trailing: const Icon(Icons.arrow_drop_down))),
           ...devices.where((device) => device.transport == transportFilter).map(
             (device) => Card(
               child: ListTile(
@@ -674,7 +679,7 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: appLanguage == 'ar' ? TextDirection.rtl : TextDirection.ltr,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('XP Printer'),
@@ -700,9 +705,9 @@ class _HomeState extends State<Home> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: tab,
             onDestinationSelected: (value) => setState(() => tab = value),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.share), label: 'المشاركة'),
-              NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'الإعدادات'),
+            destinations: [
+              NavigationDestination(icon: const Icon(Icons.share), label: tr('المشاركة')),
+              NavigationDestination(icon: const Icon(Icons.settings_outlined), label: tr('الإعدادات')),
             ],
           ),
         ),
