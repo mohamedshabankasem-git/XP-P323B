@@ -235,6 +235,7 @@ class _HomeState extends State<Home> {
           printAlignment = settings['printAlignment'] as String;
           rasterMode = settings['rasterMode'] as String;
           transportFilter = settings['lastTransport'] as String;
+          appLanguage = settings['appLanguage'] as String;
         });
       }
       await refresh();
@@ -513,7 +514,19 @@ class _HomeState extends State<Home> {
             ],
             onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
-          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') { searchDevices(); } else { reconnectSavedPrinter(); } }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: ListTile(leading: const Icon(Icons.search), title: Text(busy ? '...' : tr('البحث واستعادة الاتصال')), trailing: const Icon(Icons.arrow_drop_down))),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: busy || connectingAddress != null ? null : searchDevices,
+              icon: const Icon(Icons.search),
+              label: Text(tr('بحث عن الطابعات')),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(
+              onPressed: busy || connectingAddress != null ? null : reconnectSavedPrinter,
+              icon: const Icon(Icons.bluetooth_connected),
+              label: Text(tr('إعادة الاتصال بالطابعة المحفوظة')),
+            )),
+          ]),
           ...devices.where((device) => device.transport == transportFilter).map(
             (device) => Card(
               child: ListTile(
@@ -647,7 +660,7 @@ class _HomeState extends State<Home> {
   Widget _settingsPage() => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          DropdownButtonFormField<String>(isExpanded: true, initialValue: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) setState(() => appLanguage = value); }),
+          DropdownButtonFormField<String>(isExpanded: true, initialValue: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) changeLanguage(value); }),
           const SizedBox(height: 12),
           Text(tr('إعدادات الطباعة'),
               style: Theme.of(context).textTheme.titleLarge),
