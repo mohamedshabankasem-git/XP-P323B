@@ -98,8 +98,15 @@ class MainActivity : FlutterActivity() {
                                 "printAlignment" to prefs.getString("printAlignment", "left"),
                                 "rasterMode" to prefs.getString("rasterMode", "floydSteinberg"),
                                 "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
+                                "appLanguage" to prefs.getString("appLanguage", "ar"),
                             ),
                         )
+                    }
+                    "setLanguage" -> {
+                        val language = call.argument<String>("language") ?: "ar"
+                        require(language == "ar" || language == "en") { "Unsupported app language" }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit().putString("appLanguage", language).apply()
+                        result.success(true)
                     }
                     "setTransport" -> {
                         val transport = call.argument<String>("transport") ?: "bluetooth"
