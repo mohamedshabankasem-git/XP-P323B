@@ -19,6 +19,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
 import androidx.core.app.ActivityCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -37,6 +38,8 @@ class MainActivity : FlutterActivity() {
     private var method: MethodChannel? = null
     private var sink: EventChannel.EventSink? = null
     private var pendingShare: Map<String, Any?>? = null
+    private var pendingImagePickerResult: MethodChannel.Result? = null
+    private val imagePickerRequestCode = 704
     private var bt: BluetoothSocket? = null
     private var usb: UsbDeviceConnection? = null
     private var usbDeviceId: String? = null
@@ -75,6 +78,14 @@ class MainActivity : FlutterActivity() {
         method?.setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
+                    "pickImageForPrint" -> {
+                        pendingImagePickerResult = result
+                        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "image/*"
+                        }
+                        startActivityForResult(picker, imagePickerRequestCode)
+                    }
                     "discoverDevices" -> { val transport = call.argument<String>("transport") ?: "bluetooth"; result.success(discover(transport)) }
                     "connectionStatus" -> result.success(connectionStatus())
                     "restoreConnection" -> { val transport = call.argument<String>("transport") ?: "bluetooth"; runPrinterTask(result) { restoreConnection(transport) } }
@@ -217,6 +228,29 @@ class MainActivity : FlutterActivity() {
                     sink = null
                 }
             })
+    }
+
+    @Deprecated("Deprecated in Android API; retained for Flutter activity result compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != imagePickerRequestCode) return
+        val callback = pendingImagePickerResult
+        pendingImagePickerResult = null
+        if (resultCode != RESULT_OK || data?.data == null) { callback?.success(null); return }
+        try {
+            val uri = data.data!!
+            val mime = contentResolver.getType(uri) ?: "image/*"
+            val displayName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+            } ?: "selected_image"
+            val extension = when (mime.substringAfter('/', "png").lowercase()) { "jpeg" -> "jpg"; "svg+xml" -> "svg"; else -> mime.substringAfter('/', "png").substringBefore(';') }
+            val output = File(cacheDir, "print_image_${System.currentTimeMillis()}.$extension")
+            contentResolver.openInputStream(uri).use { input -> requireNotNull(input) { "Cannot read selected image" }; output.outputStream().use { target -> input.copyTo(target) } }
+            callback?.success(mapOf("path" to output.absolutePath, "name" to displayName, "mimeType" to mime))
+        } catch (error: Exception) {
+            callback?.error("IMAGE_PICK", error.message ?: "Could not load image", null)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
