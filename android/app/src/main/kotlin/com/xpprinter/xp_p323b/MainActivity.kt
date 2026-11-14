@@ -45,6 +45,19 @@ class MainActivity : FlutterActivity() {
     private var usbDeviceId: String? = null
     private var endpoint: UsbEndpoint? = null
     private val printerExecutor = Executors.newSingleThreadExecutor()
+    private var directShareWasAlreadyRunning = false
+
+    private fun isDirectShare(value: Intent?): Boolean {
+        val isShare = value?.action == Intent.ACTION_SEND || value?.action == Intent.ACTION_SEND_MULTIPLE
+        return isShare && getSharedPreferences("printer", MODE_PRIVATE).getString("shareBehavior", "open") == "direct"
+    }
+
+    private fun applyDirectShareWindow() {
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+        window.decorView.alpha = 0f
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        window.attributes = window.attributes.apply { alpha = 0f }
+    }
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -64,6 +77,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (isDirectShare(intent)) applyDirectShareWindow()
         val filter = IntentFilter(usbResultAction)
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -99,8 +113,26 @@ class MainActivity : FlutterActivity() {
                                 "rasterMode" to prefs.getString("rasterMode", "floydSteinberg"),
                                 "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
                                 "appLanguage" to prefs.getString("appLanguage", "ar"),
+                                "shareBehavior" to prefs.getString("shareBehavior", "open"),
                             ),
                         )
+                    }
+                    "setShareBehavior" -> {
+                        val behavior = call.argument<String>("behavior") ?: "open"
+                        require(behavior == "open" || behavior == "direct") { "Unsupported share behavior" }
+                        getSharedPreferences("printer", MODE_PRIVATE).edit().putString("shareBehavior", behavior).apply()
+                        result.success(true)
+                    }
+                    "finishDirectShare" -> {
+                        if (directShareWasAlreadyRunning) {
+                            window.decorView.alpha = 1f
+                            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                            window.attributes = window.attributes.apply { alpha = 1f }
+                            directShareWasAlreadyRunning = false
+                        } else {
+                            finish()
+                        }
+                        result.success(true)
                     }
                     "setLanguage" -> {
                         val language = call.argument<String>("language") ?: "ar"
@@ -263,6 +295,10 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (isDirectShare(intent)) {
+            directShareWasAlreadyRunning = true
+            applyDirectShareWindow()
+        }
         receiveShare(intent)
     }
 
