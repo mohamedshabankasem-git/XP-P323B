@@ -51,7 +51,51 @@ class _HomeState extends State<Home> {
   String appLanguage = 'ar';
   String? customPrintImagePath;
   String? customPrintImageName;
-  String tr(String ar) => appLanguage == 'ar' ? ar : ({'المشاركة':'Share','الإعدادات':'Settings','إعدادات الطباعة':'Print settings','الطباعة من المشاركة':'Print from sharing','إعادة طباعة العناصر المستلمة':'Print','طباعة':'Print','إدراج صورة':'Add image','عرض اللغة':'Language','العربية':'Arabic','الإنجليزية':'English','الاتصال بالطابعة':'Printer connection','لا توجد جلسة طباعة نشطة':'No active printer session','غير متصل بالتطبيق':'Not connected','متصل عبر USB':'Connected via USB','متصل عبر Bluetooth':'Connected via Bluetooth','طريقة الاتصال':'Connection type','البحث واستعادة الاتصال':'Search and reconnect','جارٍ البحث والاستعادة...':'Searching and reconnecting...','بحث عن الطابعات':'Search for printers','إعادة الاتصال بالطابعة المحفوظة':'Reconnect saved printer','عرض الورق':'Paper width','محاذاة الطباعة':'Print alignment','يمين':'Right','منتصف':'Center','يسار':'Left','طريقة تحويل الصورة إلى أبيض وأسود':'Image conversion mode','إدارة الطابعة':'Printer management','طباعة صفحة اختبار':'Print test page','معاينة الطباعة':'Print preview','جارٍ تجهيز المعاينة...':'Preparing preview...','تمت إضافة الصورة إلى مهمة الطباعة':'Image added to print job','اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.':'Choose the roll width used for shared files.','اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.':'Choose Share then XP Printer from any app. The app opens here and prints automatically when a printer is connected.','إدارة الطابعة':'Printer management','ملاحظة لطابعة XP-P323B':'XP-P323B printer note','مقاس الورق الحالي:':'Current paper size:','جارٍ تجهيز الطباعة...':'Preparing print...','لم يتم استقبال مشاركة بعد':'No shared item received yet','غير متصل بالتطبيق':'Not connected','تم حفظ مقاس الورق':'Paper size saved','تم حفظ محاذاة الطباعة':'Print alignment saved'})[ar] ?? ar);
+  String tr(String ar) {
+    if (appLanguage == 'ar') return ar;
+    const translations = <String, String>{
+      'المشاركة': 'Share',
+      'الإعدادات': 'Settings',
+      'إعدادات الطباعة': 'Print settings',
+      'الطباعة من المشاركة': 'Print from sharing',
+      'إعادة طباعة العناصر المستلمة': 'Print',
+      'طباعة': 'Print',
+      'إدراج صورة': 'Add image',
+      'عرض اللغة': 'Language',
+      'العربية': 'Arabic',
+      'الإنجليزية': 'English',
+      'الاتصال بالطابعة': 'Printer connection',
+      'لا توجد جلسة طباعة نشطة': 'No active printer session',
+      'غير متصل بالتطبيق': 'Not connected',
+      'متصل عبر USB': 'Connected via USB',
+      'متصل عبر Bluetooth': 'Connected via Bluetooth',
+      'طريقة الاتصال': 'Connection type',
+      'البحث واستعادة الاتصال': 'Search and reconnect',
+      'جارٍ البحث والاستعادة...': 'Searching and reconnecting...',
+      'بحث عن الطابعات': 'Search for printers',
+      'إعادة الاتصال بالطابعة المحفوظة': 'Reconnect saved printer',
+      'عرض الورق': 'Paper width',
+      'محاذاة الطباعة': 'Print alignment',
+      'يمين': 'Right',
+      'منتصف': 'Center',
+      'يسار': 'Left',
+      'طريقة تحويل الصورة إلى أبيض وأسود': 'Image conversion mode',
+      'إدارة الطابعة': 'Printer management',
+      'طباعة صفحة اختبار': 'Print test page',
+      'معاينة الطباعة': 'Print preview',
+      'جارٍ تجهيز المعاينة...': 'Preparing preview...',
+      'تمت إضافة الصورة إلى مهمة الطباعة': 'Image added to print job',
+      'اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.': 'Choose the roll width used for shared files.',
+      'اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.': 'Choose Share then XP Printer from any app. The app opens here and prints automatically when a printer is connected.',
+      'ملاحظة لطابعة XP-P323B': 'XP-P323B printer note',
+      'مقاس الورق الحالي:': 'Current paper size:',
+      'جارٍ تجهيز الطباعة...': 'Preparing print...',
+      'لم يتم استقبال مشاركة بعد': 'No shared item received yet',
+      'تم حفظ مقاس الورق': 'Paper size saved',
+      'تم حفظ محاذاة الطباعة': 'Print alignment saved',
+    };
+    return translations[ar] ?? ar;
+  }
   bool busy = false;
   bool printingShare = false;
   String? sharePreviewPath;
@@ -469,7 +513,7 @@ class _HomeState extends State<Home> {
             ],
             onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
-          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') searchDevices(); else reconnectSavedPrinter(); }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: ListTile(leading: const Icon(Icons.search), title: Text(busy ? '...' : tr('البحث واستعادة الاتصال')), trailing: const Icon(Icons.arrow_drop_down))),
+          PopupMenuButton<String>(enabled: !busy && connectingAddress == null, onSelected: (action) { if (action == 'search') { searchDevices(); } else { reconnectSavedPrinter(); } }, itemBuilder: (_) => [PopupMenuItem(value: 'search', child: Text(tr('بحث عن الطابعات'))), PopupMenuItem(value: 'reconnect', child: Text(tr('إعادة الاتصال بالطابعة المحفوظة')))], child: ListTile(leading: const Icon(Icons.search), title: Text(busy ? '...' : tr('البحث واستعادة الاتصال')), trailing: const Icon(Icons.arrow_drop_down))),
           ...devices.where((device) => device.transport == transportFilter).map(
             (device) => Card(
               child: ListTile(
@@ -603,7 +647,7 @@ class _HomeState extends State<Home> {
   Widget _settingsPage() => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          DropdownButtonFormField<String>(isExpanded: true, value: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) setState(() => appLanguage = value); }),
+          DropdownButtonFormField<String>(isExpanded: true, initialValue: appLanguage, decoration: InputDecoration(labelText: tr('عرض اللغة'), border: const OutlineInputBorder()), items: [DropdownMenuItem(value: 'ar', child: Text(tr('العربية'))), DropdownMenuItem(value: 'en', child: Text(tr('الإنجليزية')))], onChanged: (value) { if (value != null) setState(() => appLanguage = value); }),
           const SizedBox(height: 12),
           Text(tr('إعدادات الطباعة'),
               style: Theme.of(context).textTheme.titleLarge),
@@ -633,7 +677,7 @@ class _HomeState extends State<Home> {
               border: OutlineInputBorder(),
               helperText: 'تُطبّق على النصوص والصور والملفات المشتركة',
             ),
-            items: const [
+            items: [
               DropdownMenuItem(value: 'right', child: Text(tr('يمين'))),
               DropdownMenuItem(value: 'center', child: Text(tr('منتصف'))),
               DropdownMenuItem(value: 'left', child: Text(tr('يسار'))),
