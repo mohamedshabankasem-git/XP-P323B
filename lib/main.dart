@@ -428,6 +428,16 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> changeLanguage(String language) async {
+    try {
+      await bridge.setLanguage(language);
+      if (mounted) setState(() => appLanguage = language);
+      toast(language == 'ar' ? 'تم حفظ اللغة العربية' : 'English language saved');
+    } catch (error) {
+      toast('تعذر حفظ اللغة: $error');
+    }
+  }
+
   Future<void> changePaperWidth(int width, int dots) async {
     try {
       await bridge.setPaperWidth(width, dots);
