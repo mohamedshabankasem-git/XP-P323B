@@ -67,6 +67,12 @@ class PrinterBridge {
   Future<void> setRasterMode(String mode) =>
       _method.invokeMethod('setRasterMode', {'mode': mode});
 
+  Future<Map<String, String>?> pickImageForPrint() async {
+    final result = await _method.invokeMethod<Map<dynamic, dynamic>>('pickImageForPrint');
+    if (result == null) return null;
+    return {'path': result['path'].toString(), 'name': result['name'].toString(), 'mimeType': result['mimeType'].toString()};
+  }
+
   Future<Uint8List> appIcon() async =>
       (await _method.invokeMethod<Uint8List>('getAppIcon')) ?? Uint8List(0);
 
