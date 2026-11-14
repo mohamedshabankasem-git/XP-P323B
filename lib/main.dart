@@ -51,7 +51,7 @@ class _HomeState extends State<Home> {
   String appLanguage = 'ar';
   String? customPrintImagePath;
   String? customPrintImageName;
-  String tr(String ar) => appLanguage == 'ar' ? ar : ({'المشاركة':'Share','الإعدادات':'Settings','إعدادات الطباعة':'Print settings','الطباعة من المشاركة':'Print from sharing','إعادة طباعة العناصر المستلمة':'Print','طباعة':'Print','إدراج صورة':'Add image','عرض اللغة':'Language','العربية':'Arabic','الإنجليزية':'English','الاتصال بالطابعة':'Printer connection','لا توجد جلسة طباعة نشطة':'No active printer session','غير متصل بالتطبيق':'Not connected','متصل عبر USB':'Connected via USB','متصل عبر Bluetooth':'Connected via Bluetooth','طريقة الاتصال':'Connection type','البحث واستعادة الاتصال':'Search and reconnect','جارٍ البحث والاستعادة...':'Searching and reconnecting...','بحث عن الطابعات':'Search for printers','إعادة الاتصال بالطابعة المحفوظة':'Reconnect saved printer','عرض الورق':'Paper width','محاذاة الطباعة':'Print alignment','يمين':'Right','منتصف':'Center','يسار':'Left','طريقة تحويل الصورة إلى أبيض وأسود':'Image conversion mode','إدارة الطابعة':'Printer management','طباعة صفحة اختبار':'Print test page','معاينة الطباعة':'Print preview','جارٍ تجهيز المعاينة...':'Preparing preview...','تمت إضافة الصورة إلى مهمة الطباعة':'Image added to print job','اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.':'Choose the roll width used for shared files.'})[ar] ?? ar);
+  String tr(String ar) => appLanguage == 'ar' ? ar : ({'المشاركة':'Share','الإعدادات':'Settings','إعدادات الطباعة':'Print settings','الطباعة من المشاركة':'Print from sharing','إعادة طباعة العناصر المستلمة':'Print','طباعة':'Print','إدراج صورة':'Add image','عرض اللغة':'Language','العربية':'Arabic','الإنجليزية':'English','الاتصال بالطابعة':'Printer connection','لا توجد جلسة طباعة نشطة':'No active printer session','غير متصل بالتطبيق':'Not connected','متصل عبر USB':'Connected via USB','متصل عبر Bluetooth':'Connected via Bluetooth','طريقة الاتصال':'Connection type','البحث واستعادة الاتصال':'Search and reconnect','جارٍ البحث والاستعادة...':'Searching and reconnecting...','بحث عن الطابعات':'Search for printers','إعادة الاتصال بالطابعة المحفوظة':'Reconnect saved printer','عرض الورق':'Paper width','محاذاة الطباعة':'Print alignment','يمين':'Right','منتصف':'Center','يسار':'Left','طريقة تحويل الصورة إلى أبيض وأسود':'Image conversion mode','إدارة الطابعة':'Printer management','طباعة صفحة اختبار':'Print test page','معاينة الطباعة':'Print preview','جارٍ تجهيز المعاينة...':'Preparing preview...','تمت إضافة الصورة إلى مهمة الطباعة':'Image added to print job','اختر عرض رول الورق المستخدم في طباعة الملفات المشتركة.':'Choose the roll width used for shared files.','اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.':'Choose Share then XP Printer from any app. The app opens here and prints automatically when a printer is connected.','إدارة الطابعة':'Printer management','ملاحظة لطابعة XP-P323B':'XP-P323B printer note','مقاس الورق الحالي:':'Current paper size:','جارٍ تجهيز الطباعة...':'Preparing print...','لم يتم استقبال مشاركة بعد':'No shared item received yet','غير متصل بالتطبيق':'Not connected','تم حفظ مقاس الورق':'Paper size saved','تم حفظ محاذاة الطباعة':'Print alignment saved'})[ar] ?? ar);
   bool busy = false;
   bool printingShare = false;
   String? sharePreviewPath;
@@ -504,9 +504,7 @@ class _HomeState extends State<Home> {
         children: [
           Text(tr('الطباعة من المشاركة'),
               style: Theme.of(context).textTheme.titleLarge),
-          const Text(
-            'اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.',
-          ),
+          Text(tr('اختر مشاركة ثم XP Printer من أي تطبيق. ينتقل التطبيق إلى هذه الشاشة ويبدأ الطباعة تلقائياً عند توفر اتصال بالطابعة.')),
           const SizedBox(height: 12),
           Card(
             clipBehavior: Clip.antiAlias,
@@ -565,7 +563,7 @@ class _HomeState extends State<Home> {
             ),
           ),
           const SizedBox(height: 10),
-          Text('مقاس الورق الحالي: $paperWidthMm مم'),
+          Text('${tr('مقاس الورق الحالي:')} $paperWidthMm mm'),
         ],
       );
 
@@ -663,13 +661,13 @@ class _HomeState extends State<Home> {
             onChanged: (value) { if (value != null) changeRasterMode(value); },
           ),
           const Divider(),
-          Text('إدارة الطابعة', style: Theme.of(context).textTheme.titleMedium),
+          Text(tr('إدارة الطابعة'), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           _printerSection(),
           const Divider(),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('ملاحظة لطابعة XP-P323B'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(tr('ملاحظة لطابعة XP-P323B')),
             subtitle: Text(
               'أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.',
             ),
