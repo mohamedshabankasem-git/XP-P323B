@@ -797,9 +797,9 @@ class _HomeState extends State<Home> {
             isExpanded: true,
             key: ValueKey(rasterMode),
             initialValue: rasterMode,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: tr('طريقة تحويل الصورة إلى أبيض وأسود'),
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
               helperText: tr('المعاينة والطباعة تستخدمان نفس طريقة التحويل'),
             ),
             items: [
