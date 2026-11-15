@@ -48,7 +48,7 @@ class _HomeState extends State<Home> {
   int paperWidthDots = 384;
   String printAlignment = 'left';
   String rasterMode = 'floydSteinberg';
-  String appLanguage = 'ar';
+  String appLanguage = 'en';
   String? customPrintImagePath;
   String? customPrintImageName;
   String tr(String ar) {
@@ -93,11 +93,54 @@ class _HomeState extends State<Home> {
       'لم يتم استقبال مشاركة بعد': 'No shared item received yet',
       'تم حفظ مقاس الورق': 'Paper size saved',
       'تم حفظ محاذاة الطباعة': 'Print alignment saved',
+      'ملاحظة لطابعة XP-P323B': 'XP-P323B printer note',
+      'يتم حفظ آخر طابعة تم الاتصال بها ومحاولة استعادة الاتصال تلقائياً عند فتح التطبيق أو استقبال ملف للمشاركة. الاقتران من إعدادات الهاتف وحده لا يعني وجود جلسة طباعة نشطة.': 'The last connected printer is saved, and the app attempts to reconnect automatically when opened or when a file is shared. Pairing from Android settings alone does not mean an active printing session exists.',
+      'اتصال': 'Connect',
+      'جارٍ الاتصال...': 'Connecting...',
+      'تعذر عرض الملف': 'Unable to display file',
+      'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا': 'Share an image, PDF, or text to preview it here',
+      'تُطبّق على النصوص والصور والملفات المشتركة': 'Applied to text, images, and shared files',
+      'المعاينة والطباعة تستخدمان نفس طريقة التحويل': 'Preview and printing use the same conversion method',
+      'أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.': 'The printer supports a maximum print width of 72 mm. With an 80 mm roll, the app uses the full available print width, up to 576 dots.',
+      'لا توجد ملفات أو نصوص مستلمة للطباعة': 'No received files or text to print',
+      'تم استقبال المشاركة، لكن لا يوجد اتصال طباعة نشط. افتح الإعدادات واتصل بالطابعة ثم أعد الطباعة.': 'The shared item was received, but no active printer connection is available. Open Settings, connect to the printer, then try again.',
+      'اتصل بالطابعة أولاً ثم أعد المحاولة.': 'Connect to the printer first, then try again.',
+      'مسار الملف المستلم غير موجود': 'The received file path is missing',
+      'ملف PDF لا يحتوي على صفحات قابلة للطباعة': 'The PDF contains no printable pages',
+      'نوع الملف غير مدعوم حالياً؛ استخدم صورة أو PDF أو نصاً': 'This file type is not supported. Use an image, PDF, or text.',
+      'تعذر طباعة المشاركة:': 'Could not print shared item:',
+      'فشل إرسال الطباعة:': 'Failed to send print job:',
+      'تعذر استقبال المشاركة:': 'Could not receive shared item:',
+      'ملف': 'File',
+      'نص مستلم': 'Text received',
+      'مشاركة فارغة': 'Empty share',
+      'تعذر تحميل إعدادات الورق:': 'Could not load printer settings:',
+      'تعذر البحث عن الأجهزة:': 'Could not search for devices:',
+      'تعذرت إعادة الاتصال بالطابعة المحفوظة': 'Could not reconnect to saved printer',
+      'تعذرت إعادة الاتصال:': 'Reconnection failed:',
+      'تمت إعادة الاتصال بالطابعة': 'Printer reconnected',
+      'تعذر حفظ اللغة:': 'Could not save language:',
+      'تم حفظ اللغة العربية': 'Arabic language saved',
+      'تم حفظ مقاس الورق': 'Paper size saved',
+      'تعذر حفظ مقاس الورق:': 'Could not save paper size:',
+      'تعذر تجهيز صفحة الاختبار:': 'Could not prepare test page:',
+      'تم حفظ طريقة تحويل الصورة للطباعة': 'Image conversion mode saved',
+      'تعذر حفظ طريقة التحويل:': 'Could not save conversion mode:',
+      'تم حفظ محاذاة الطباعة': 'Print alignment saved',
+      'تعذر حفظ محاذاة الطباعة:': 'Could not save print alignment:',
+      'الملاحظات': 'Notes',
+      'ملاحظات': 'Notes',
+      'ملاحظة': 'Note',
+      'تفاصيل وتدرجات أفضل': 'Better detail and gradients',
+      'نقاط أخف': 'Lighter dots',
+      'نمط شبكي': 'Dither pattern',
+      'أبيض وأسود مباشر': 'Direct black and white',
     };
     return translations[ar] ?? ar;
   }
   bool busy = false;
   bool printingShare = false;
+  bool launchedFromShare = false;
   String? sharePreviewPath;
   Uint8List? sharePreviewBytes;
   String? sharePreviewLabel;
@@ -128,6 +171,7 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _onShared(Map<dynamic, dynamic> message) async {
+    launchedFromShare = true;
     final rawItems = message['items'] as List? ?? const [];
     final items = rawItems
         .map((item) => Map<String, dynamic>.from(item as Map))
@@ -232,7 +276,7 @@ class _HomeState extends State<Home> {
           printAlignment = settings['printAlignment'] as String;
           rasterMode = settings['rasterMode'] as String;
           transportFilter = settings['lastTransport'] as String;
-          appLanguage = settings['appLanguage'] as String;
+          appLanguage = settings['appLanguage'] as String? ?? 'en';
         });
       }
       await refresh();
@@ -415,6 +459,11 @@ class _HomeState extends State<Home> {
 
       if (printed > 0) {
         toast('تم إرسال $printed عنصر/صفحة للطباعة');
+        if (automatic && launchedFromShare) {
+          launchedFromShare = false;
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+          await bridge.closeApp();
+        }
       } else {
         toast('نوع الملف غير مدعوم حالياً؛ استخدم صورة أو PDF أو نصاً');
       }
