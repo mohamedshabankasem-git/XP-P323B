@@ -94,9 +94,6 @@ class _HomeState extends State<Home> {
       'يتم حفظ آخر طابعة تم الاتصال بها ومحاولة استعادة الاتصال تلقائياً عند فتح التطبيق أو استقبال ملف للمشاركة. الاقتران من إعدادات الهاتف وحده لا يعني وجود جلسة طباعة نشطة.': 'The last connected printer is saved, and the app attempts to reconnect automatically when opened or when a file is shared. Pairing from Android settings alone does not mean an active printing session exists.',
       'اتصال': 'Connect',
       'جارٍ الاتصال...': 'Connecting...',
-      'تعذر عرض الملف': 'Unable to display file',
-      'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا': 'Share an image, PDF, or text to preview it here',
-      'تُطبّق على النصوص والصور والملفات المشتركة': 'Applied to text, images, and shared files',
       'المعاينة والطباعة تستخدمان نفس طريقة التحويل': 'Preview and printing use the same conversion method',
       'أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.': 'The printer supports a maximum print width of 72 mm. With an 80 mm roll, the app uses the full available print width, up to 576 dots.',
       'لا توجد ملفات أو نصوص مستلمة للطباعة': 'No received files or text to print',
@@ -665,7 +662,7 @@ class _HomeState extends State<Home> {
                                 sharePreviewBytes!,
                                 fit: BoxFit.contain,
                                 filterQuality: FilterQuality.none,
-                                errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(24), child: Text(tr('تعذر عرض الملف'))),
+                                errorBuilder: (_, __, ___) => Padding(padding: const EdgeInsets.all(24), child: Text(tr('تعذر عرض الملف'))),
                               )
                             : Padding(
                                     padding: const EdgeInsets.all(24),
@@ -762,8 +759,8 @@ class _HomeState extends State<Home> {
             isExpanded: true,
             key: ValueKey(printAlignment),
             initialValue: printAlignment,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
               helperText: tr('تُطبّق على النصوص والصور والملفات المشتركة'),
             ),
             items: [
