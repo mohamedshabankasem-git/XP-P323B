@@ -603,7 +603,7 @@ class _HomeState extends State<Home> {
             key: ValueKey(transportFilter),
             initialValue: transportFilter,
             decoration: InputDecoration(labelText: tr('طريقة الاتصال'), border: const OutlineInputBorder()),
-            items: const [
+            items: [
               DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text(tr('بلوتوث'))])),
               DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text(tr('يو إس بي'))])),
             ],
@@ -802,7 +802,7 @@ class _HomeState extends State<Home> {
               border: OutlineInputBorder(),
               helperText: tr('المعاينة والطباعة تستخدمان نفس طريقة التحويل'),
             ),
-            items: const [
+            items: [
               DropdownMenuItem(value: 'floydSteinberg', child: Text(tr('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
               DropdownMenuItem(value: 'atkinson', child: Text(tr('Dithering - Atkinson (نقاط أخف)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
               DropdownMenuItem(value: 'ordered', child: Text(tr('Ordered Dithering (نمط شبكي)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
