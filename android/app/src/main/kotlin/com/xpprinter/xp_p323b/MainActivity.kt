@@ -98,10 +98,11 @@ class MainActivity : FlutterActivity() {
                                 "printAlignment" to prefs.getString("printAlignment", "left"),
                                 "rasterMode" to prefs.getString("rasterMode", "floydSteinberg"),
                                 "lastTransport" to prefs.getString("lastTransport", "bluetooth"),
-                                "appLanguage" to prefs.getString("appLanguage", "ar"),
+                                "appLanguage" to prefs.getString("appLanguage", "en"),
                             ),
                         )
                     }
+                    "closeApp" -> { finish(); result.success(true) }
                     "setLanguage" -> {
                         val language = call.argument<String>("language") ?: "ar"
                         require(language == "ar" || language == "en") { "Unsupported app language" }
