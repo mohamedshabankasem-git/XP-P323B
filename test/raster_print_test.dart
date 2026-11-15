@@ -43,12 +43,15 @@ void main() {
       source.setPixelRgb(x, 0, 0, 0, 0);
     }
     final encoded = img.encodePng(source);
+    final expectedX = {'left': 0, 'center': 188, 'right': 376};
     for (final alignment in ['left', 'center', 'right']) {
       final preview = img.decodePng(RasterPrint.imageToPreviewPng(
         encoded, maxWidth: 384, alignment: alignment,
       ))!;
       expect(preview.width, 384);
       expect(preview.height, 1);
+      expect(preview.getPixel(expectedX[alignment]!, 0).r, 0);
+      expect(preview.getPixel(expectedX[alignment]! + 7, 0).r, 0);
     }
   });
 
