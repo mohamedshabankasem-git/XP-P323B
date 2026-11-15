@@ -65,6 +65,8 @@ class PrinterBridge {
   Future<void> setLanguage(String language) =>
       _method.invokeMethod('setLanguage', {'language': language});
 
+  Future<void> closeApp() => _method.invokeMethod('closeApp');
+
   Future<void> setTransport(String transport) =>
       _method.invokeMethod('setTransport', {'transport': transport});
 
