@@ -3,28 +3,52 @@ import 'package:image/image.dart' as img;
 import 'package:xp_p323b/printer/raster_print.dart';
 
 void main() {
-  test('shifts original-size raster 8 dots right on both paper widths', () {
+  test('encodes left, center and right image alignment in the raster', () {
     final source = img.Image(width: 8, height: 1);
     for (var x = 0; x < 8; x++) {
       source.setPixelRgb(x, 0, 0, 0, 0);
     }
     final encoded = img.encodePng(source);
 
-    for (final paperWidth in <int>[384, 576]) {
-      final command = RasterPrint.imageToEscPos(
-        encoded,
-        maxWidth: paperWidth,
-        alignment: 'left',
-      );
-      final widthBytes = paperWidth ~/ 8;
+    final left = RasterPrint.imageToEscPos(
+      encoded, maxWidth: 384, alignment: 'left',
+    );
+    final center = RasterPrint.imageToEscPos(
+      encoded, maxWidth: 384, alignment: 'center',
+    );
+    final right = RasterPrint.imageToEscPos(
+      encoded, maxWidth: 384, alignment: 'right',
+    );
+
+    // ESC/POS justification stays left because the raster carries alignment.
+    for (final command in [left, center, right]) {
       expect(command.sublist(2, 5), <int>[0x1B, 0x61, 0]);
-      expect(command[9], widthBytes);
+      expect(command[9], 48);
       expect(command[10], 0);
-      expect(command[13], 0x00);
-      expect(command[14], 0xFF);
+      expect(command[11], 1);
       expect(command.sublist(command.length - 5), <int>[
         0x0A, 0x0A, 0x1B, 0x61, 0x00,
       ]);
+    }
+    // A one-byte-wide black source occupies the left, center, or right
+    // byte of the 48-byte print row respectively.
+    expect(left[13], 0xFF);
+    expect(center[13 + 23], 0xFF);
+    expect(right[13 + 47], 0xFF);
+  });
+
+  test('preview applies the same horizontal alignment as print data', () {
+    final source = img.Image(width: 8, height: 1);
+    for (var x = 0; x < 8; x++) {
+      source.setPixelRgb(x, 0, 0, 0, 0);
+    }
+    final encoded = img.encodePng(source);
+    for (final alignment in ['left', 'center', 'right']) {
+      final preview = img.decodePng(RasterPrint.imageToPreviewPng(
+        encoded, maxWidth: 384, alignment: alignment,
+      ))!;
+      expect(preview.width, 384);
+      expect(preview.height, 1);
     }
   });
 
