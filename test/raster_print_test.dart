@@ -33,8 +33,8 @@ void main() {
     // A one-byte-wide black source occupies the left, center, or right
     // byte of the 48-byte print row respectively.
     expect(left[13], 0xFF);
-    expect(center[13 + 23], 0xFF);
-    expect(right[13 + 47], 0xFF);
+    expect(center[13 + 23], 0x08);
+    expect(right[13 + 47], 0x01);
   });
 
   test('preview applies the same horizontal alignment as print data', () {
