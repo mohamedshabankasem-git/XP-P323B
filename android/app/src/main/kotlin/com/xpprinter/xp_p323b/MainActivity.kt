@@ -292,11 +292,29 @@ class MainActivity : FlutterActivity() {
             if (uri != null) uris.add(uri)
         }
 
+        // Shared files must survive Android cache cleanup while Flutter is
+        // preparing the preview and sending the print job.
+        val sharedDirectory = File(filesDir, "shared_files").apply {
+            if (!exists() && !mkdirs()) {
+                error("Could not create shared files directory")
+            }
+        }
         val files = uris.mapIndexed { index, uri ->
-            val file = File(cacheDir, "shared_" + System.currentTimeMillis() + "_" + index)
-            contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "Cannot read shared URI" }
-                file.outputStream().use { output -> input.copyTo(output) }
+            val file = File(
+                sharedDirectory,
+                "shared_" + System.currentTimeMillis() + "_" + System.nanoTime() + "_" + index,
+            )
+            try {
+                contentResolver.openInputStream(uri).use { input ->
+                    requireNotNull(input) { "Cannot read shared URI" }
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+                require(file.isFile && file.length() > 0L) {
+                    "Shared file was not copied correctly"
+                }
+            } catch (error: Exception) {
+                file.delete()
+                throw error
             }
             mapOf(
                 "name" to file.name,
