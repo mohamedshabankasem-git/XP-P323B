@@ -30,12 +30,12 @@ void main() {
         0x0A, 0x0A, 0x1B, 0x61, 0x00,
       ]);
     }
-    // A one-byte-wide black source occupies the left, center, or right
-    // byte of the 48-byte print row respectively.
+    // Eight black dots occupy the left, center, or right byte of the row.
+    // ESC/POS packs pixels MSB-first, so a fully black byte is always 0xFF.
     expect(left[13], 0xFF);
     expect(center[13 + 23], 0x0F);
     expect(center[13 + 24], 0xF0);
-    expect(right[13 + 47], 0x01);
+    expect(right[13 + 47], 0xFF);
   });
 
   test('preview applies the same horizontal alignment as print data', () {
