@@ -255,12 +255,16 @@ class _HomeState extends State<Home> {
               pageIndex: 0,
               widthDots: printWidthDots,
             );
-            sharePreviewBytes = RasterPrint.imageToPreviewPng(
-              await File(renderedPath).readAsBytes(),
-              maxWidth: printWidthDots,
-              alignment: printAlignment,
-              mode: rasterMode,
-            );
+            try {
+              sharePreviewBytes = RasterPrint.imageToPreviewPng(
+                await File(renderedPath).readAsBytes(),
+                maxWidth: printWidthDots,
+                alignment: printAlignment,
+                mode: rasterMode,
+              );
+            } finally {
+              try { await File(renderedPath).delete(); } catch (_) {}
+            }
             sharePreviewLabel = '${tr('معاينة حرارية للصفحة الأولى من PDF')} ($count ${tr('صفحة')})';
           }
         } else {
