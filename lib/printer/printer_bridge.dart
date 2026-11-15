@@ -56,18 +56,11 @@ class PrinterBridge {
       'lastTransport': value?['lastTransport']?.toString() == 'usb' ? 'usb' : 'bluetooth',
       'rasterMode': value?['rasterMode']?.toString() ?? 'floydSteinberg',
       'appLanguage': value?['appLanguage']?.toString() == 'en' ? 'en' : 'ar',
-      'shareBehavior': value?['shareBehavior']?.toString() == 'direct' ? 'direct' : 'open',
     };
   }
 
   Future<void> setPaperWidth(int width, int dots) =>
       _method.invokeMethod('setPaperWidth', {'paperWidthMm': width, 'paperWidthDots': dots});
-
-  Future<void> setShareBehavior(String behavior) =>
-      _method.invokeMethod('setShareBehavior', {'behavior': behavior});
-
-  Future<void> finishDirectShare() =>
-      _method.invokeMethod('finishDirectShare');
 
   Future<void> setLanguage(String language) =>
       _method.invokeMethod('setLanguage', {'language': language});
