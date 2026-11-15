@@ -138,48 +138,50 @@ class RasterPrint {
     required String alignment,
     String mode = 'floydSteinberg',
   }) {
-    const margin = 8;
     final source = imageToRaster(
       encodedImage,
       maxWidth: maxWidth,
       mode: mode,
     );
-    final raster = _positionRaster(
+    final raster = _alignRaster(
       source,
       paperWidth: maxWidth,
-      leftMargin: margin,
+      alignment: alignment,
     );
     final paper = img.Image(width: maxWidth, height: raster.height);
     img.fill(paper, color: img.ColorRgb8(255, 255, 255));
     final contentWidth = raster.widthBytes * 8;
-    const offset = 0;
     for (var y = 0; y < raster.height; y++) {
-      for (var x = 0; x < contentWidth && x + offset < maxWidth; x++) {
+      for (var x = 0; x < contentWidth && x < maxWidth; x++) {
         final byte = raster.data[y * raster.widthBytes + (x ~/ 8)];
         if ((byte & (0x80 >> (x % 8))) != 0) {
-          paper.setPixelRgb(x + offset, y, 0, 0, 0);
+          paper.setPixelRgb(x, y, 0, 0, 0);
         }
       }
     }
     return Uint8List.fromList(img.encodePng(paper));
   }
 
-  static ThermalRaster _positionRaster(
+  static ThermalRaster _alignRaster(
     ThermalRaster source, {
     required int paperWidth,
-    required int leftMargin,
+    required String alignment,
   }) {
-    if (leftMargin == 0) return source;
     final widthBytes = (paperWidth + 7) ~/ 8;
-    final contentWidth = source.widthBytes * 8;
-    final offset = leftMargin;
+    final sourceWidth = source.widthBytes * 8;
+    final contentWidth = math.min(sourceWidth, paperWidth);
+    final offset = switch (alignment) {
+      'right' => paperWidth - contentWidth,
+      'center' => (paperWidth - contentWidth) ~/ 2,
+      _ => 0,
+    };
     final data = List<int>.filled(widthBytes * source.height, 0);
     for (var y = 0; y < source.height; y++) {
-      for (var x = 0; x < contentWidth && x + offset < paperWidth; x++) {
+      for (var x = 0; x < contentWidth; x++) {
         final byte = source.data[y * source.widthBytes + (x ~/ 8)];
         if ((byte & (0x80 >> (x % 8))) != 0) {
-          data[y * widthBytes + ((x + offset) ~/ 8)] |=
-              0x80 >> ((x + offset) % 8);
+          final targetX = x + offset;
+          data[y * widthBytes + (targetX ~/ 8)] |= 0x80 >> (targetX % 8);
         }
       }
     }
@@ -206,8 +208,6 @@ class RasterPrint {
             interpolation: img.Interpolation.average,
           );
 
-    // Shift the original-size raster 8 dots right without scaling it.
-    const margin = 8;
     final sourceRaster = _decodedToRaster(
       scaled,
       maxWidth: maxWidth,
@@ -215,12 +215,12 @@ class RasterPrint {
       threshold: threshold,
       mode: mode,
     );
-    final raster = _positionRaster(
+    final raster = _alignRaster(
       sourceRaster,
       paperWidth: maxWidth,
-      leftMargin: margin,
+      alignment: alignment,
     );
-    // Positioning is already encoded in the full-width raster.
+    // Raster is positioned in software; keep ESC/POS justification left.
     const justification = 0;
     return <int>[
       0x1B, 0x40, // Initialize printer.
@@ -273,10 +273,10 @@ class RasterPrint {
           height: 1.35,
         ),
       ),
-      textDirection: TextDirection.ltr,
+      textDirection: RegExp(r'[\\u0600-\\u06FF]').hasMatch(content) ? TextDirection.rtl : TextDirection.ltr,
       // Keep the raster itself content-sized; ESC a on the printer performs
       // the final left/center/right positioning.
-      textAlign: TextAlign.left,
+      textAlign: TextAlign.start,
     );
     painter.layout(maxWidth: widthDots.toDouble());
     final height = math.max(48, painter.height.ceil() + 24).toInt();
