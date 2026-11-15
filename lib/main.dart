@@ -48,12 +48,47 @@ class _HomeState extends State<Home> {
   int paperWidthDots = 384;
   String printAlignment = 'left';
   String rasterMode = 'floydSteinberg';
-  String appLanguage = 'en';
+  String appLanguage = 'ar';
   String? customPrintImagePath;
   String? customPrintImageName;
   String tr(String ar) {
     if (appLanguage == 'ar') return ar;
     const translations = <String, String>{
+      'بلوتوث': 'Bluetooth',
+      'يو إس بي': 'USB',
+      'جارٍ الاتصال...': 'Connecting...',
+      'طباعة صفحة اختبار': 'Print test page',
+      'أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.': 'The printer supports a maximum print width of 72 mm. With an 80 mm roll, the app uses the full available print width, up to 576 dots.',
+      'المعاينة للعنصر الأول من': 'Preview shows the first of',
+      'عناصر؛ ستتم طباعة جميع العناصر المدعومة.': 'items; all supported items will be printed.',
+      'صفحة': 'pages',
+      'مم': 'mm',
+      'لغة التطبيق': 'App language',
+      'اللغة الإنجليزية': 'English',
+      'اللغة العربية': 'Arabic',
+      'طريقة تحويل الصورة إلى أبيض وأسود': 'Image conversion method',
+      'المعاينة والطباعة تستخدمان نفس طريقة التحويل': 'Preview and printing use the same conversion method',
+      'توزيع Floyd-Steinberg (تفاصيل وتدرجات أفضل)': 'Floyd-Steinberg dithering (better detail and gradients)',
+      'Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)': 'Floyd-Steinberg dithering (better detail and gradients)',
+      'Dithering - Atkinson (نقاط أخف)': 'Atkinson dithering (lighter dots)',
+      'Ordered Dithering (نمط شبكي)': 'Ordered dithering (patterned dots)',
+      'Black & White (أبيض وأسود مباشر)': 'Black & white (direct threshold)',
+      'جارٍ تجهيز الطباعة...': 'Preparing print...',
+      'مقاس الورق الحالي:': 'Current paper width:',
+      'ملف PDF لا يحتوي على صفحات قابلة للطباعة': 'The PDF contains no printable pages',
+      'نوع الملف غير مدعوم حالياً؛ استخدم صورة أو PDF أو نصاً': 'Unsupported file type. Use an image, PDF, or text.',
+      'مسار الملف غير موجود': 'File path is missing',
+      'مسار الملف المستلم غير موجود': 'Received file path is missing',
+      'لا توجد ملفات أو نصوص مستلمة للطباعة': 'No received files or text to print',
+      'تم إرسال أمر الطباعة': 'Print command sent',
+      'الطابعة غير متصلة بالتطبيق. افتح الإعدادات واختر الطابعة ثم اضغط اتصال.': 'The printer is not connected. Open Settings, select the printer, and tap Connect.',
+      'تم الاتصال بالطابعة:': 'Connected to printer:',
+      'لم يكتمل الاتصال بالطابعة': 'Printer connection was not completed',
+      'فشل الاتصال:': 'Connection failed:',
+      'تعذر التحقق من اتصال الطابعة:': 'Could not verify printer connection:',
+      'تعذر البحث أو استعادة الاتصال:': 'Could not search for or restore the connection:',
+      'تعذر تحديث قائمة الأجهزة:': 'Could not update the device list:',
+      'English language saved': 'English language saved',
       'المشاركة': 'Share',
       'الإعدادات': 'Settings',
       'إعدادات الطباعة': 'Print settings',
@@ -582,8 +617,8 @@ class _HomeState extends State<Home> {
             initialValue: transportFilter,
             decoration: InputDecoration(labelText: tr('طريقة الاتصال'), border: const OutlineInputBorder()),
             items: const [
-              DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text('Bluetooth')])),
-              DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text('USB')])),
+              DropdownMenuItem(value: 'bluetooth', child: Row(children: [Icon(Icons.bluetooth), SizedBox(width: 10), Text(tr('بلوتوث'))])),
+              DropdownMenuItem(value: 'usb', child: Row(children: [Icon(Icons.usb), SizedBox(width: 10), Text(tr('يو إس بي'))])),
             ],
             onChanged: busy || connectingAddress != null ? null : (value) { if (value != null) _setTransport(value); },
           ),
@@ -610,8 +645,8 @@ class _HomeState extends State<Home> {
                   onPressed: connectingAddress != null ? null : () => connect(device),
                   child: Text(
                     connectingAddress == '${device.transport}:${device.address}'
-                        ? 'جارٍ الاتصال...'
-                        : 'اتصال',
+                        ? tr('جارٍ الاتصال...')
+                        : tr('اتصال'),
                   ),
                 ),
               ),
@@ -621,11 +656,9 @@ class _HomeState extends State<Home> {
             onPressed: selected == null
                 ? null
                 : printTestPage,
-            child: const Text('طباعة صفحة اختبار'),
+            child: Text(tr('طباعة صفحة اختبار')),
           ),
-          const Text(
-            'يتم حفظ آخر طابعة تم الاتصال بها ومحاولة استعادة الاتصال تلقائياً عند فتح التطبيق أو استقبال ملف للمشاركة. الاقتران من إعدادات الهاتف وحده لا يعني وجود جلسة طباعة نشطة.',
-          ),
+          Text(tr('يتم حفظ آخر طابعة تم الاتصال بها ومحاولة استعادة الاتصال تلقائياً عند فتح التطبيق أو استقبال ملف للمشاركة. الاقتران من إعدادات الهاتف وحده لا يعني وجود جلسة طباعة نشطة.')),
         ],
       );
 
@@ -672,7 +705,7 @@ class _HomeState extends State<Home> {
                   if (sharedItems.length > 1)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text('المعاينة للعنصر الأول من ${sharedItems.length} عناصر؛ ستتم طباعة جميع العناصر المدعومة.'),
+                      child: Text('${tr('المعاينة للعنصر الأول من')} ${sharedItems.length} ${tr('عناصر؛ ستتم طباعة جميع العناصر المدعومة.')}'),
                     ),
                 ],
               ),
@@ -689,11 +722,11 @@ class _HomeState extends State<Home> {
                   )
                 : const Icon(Icons.print),
             label: Text(
-              printingShare ? 'جارٍ تجهيز الطباعة...' : tr('طباعة'),
+              printingShare ? tr('جارٍ تجهيز الطباعة...') : tr('طباعة'),
             ),
           ),
           const SizedBox(height: 10),
-          Text('${tr('مقاس الورق الحالي:')} $paperWidthMm mm'),
+          Text('${tr('مقاس الورق الحالي:')} $paperWidthMm ${tr('مم')}'),
         ],
       );
 
@@ -778,15 +811,15 @@ class _HomeState extends State<Home> {
             key: ValueKey(rasterMode),
             initialValue: rasterMode,
             decoration: const InputDecoration(
-              labelText: 'طريقة تحويل الصورة إلى أبيض وأسود',
+              labelText: tr('طريقة تحويل الصورة إلى أبيض وأسود'),
               border: OutlineInputBorder(),
-              helperText: 'المعاينة والطباعة تستخدمان نفس طريقة التحويل',
+              helperText: tr('المعاينة والطباعة تستخدمان نفس طريقة التحويل'),
             ),
             items: const [
-              DropdownMenuItem(value: 'floydSteinberg', child: Text('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)', maxLines: 1, overflow: TextOverflow.ellipsis)),
-              DropdownMenuItem(value: 'atkinson', child: Text('Dithering - Atkinson (نقاط أخف)', maxLines: 1, overflow: TextOverflow.ellipsis)),
-              DropdownMenuItem(value: 'ordered', child: Text('Ordered Dithering (نمط شبكي)', maxLines: 1, overflow: TextOverflow.ellipsis)),
-              DropdownMenuItem(value: 'threshold', child: Text('Black & White (أبيض وأسود مباشر)', maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'floydSteinberg', child: Text(tr('Dithering - Floyd-Steinberg (تفاصيل وتدرجات أفضل)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'atkinson', child: Text(tr('Dithering - Atkinson (نقاط أخف)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'ordered', child: Text(tr('Ordered Dithering (نمط شبكي)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: 'threshold', child: Text(tr('Black & White (أبيض وأسود مباشر)'), maxLines: 1, overflow: TextOverflow.ellipsis)),
             ],
             onChanged: (value) { if (value != null) changeRasterMode(value); },
           ),
@@ -799,7 +832,7 @@ class _HomeState extends State<Home> {
             leading: const Icon(Icons.info_outline),
             title: Text(tr('ملاحظة لطابعة XP-P323B')),
             subtitle: Text(
-              'أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.',
+              tr('أقصى عرض طباعة للطابعة 72 مم. عند اختيار رول 80 مم يستخدم التطبيق كامل عرض الطباعة المتاح، ولا يتجاوز 576 نقطة.'),
             ),
           ),
         ],
