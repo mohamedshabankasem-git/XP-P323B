@@ -478,7 +478,7 @@ class _HomeState extends State<Home> {
     } catch (error) {
       toast('تعذر طباعة المشاركة: $error');
     } finally {
-      for (final item in sharedItems) {\n        final path = item['path']?.toString() ?? '';\n        if (path.isNotEmpty) {\n          try { await File(path).delete(); } catch (_) {}\n        }\n      }\n      if (mounted) setState(() => printingShare = false);
+      if (printed > 0) {\n        for (final item in sharedItems) {\n          final path = item['path']?.toString() ?? '';\n          if (path.isNotEmpty) {\n            try { await File(path).delete(); } catch (_) {}\n          }\n        }\n      }\n      if (mounted) setState(() => printingShare = false);
     }
   }
 
