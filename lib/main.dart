@@ -218,7 +218,10 @@ class _HomeState extends State<Home> {
       tab = 0;
     });
 
-    _prepareSharePreview();
+    // Finish reading the shared source before automatic printing can
+    // remove the temporary copy after a successful print.
+    await _prepareSharePreview();
+    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) printShared(automatic: true);
     });
