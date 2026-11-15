@@ -33,7 +33,8 @@ void main() {
     // A one-byte-wide black source occupies the left, center, or right
     // byte of the 48-byte print row respectively.
     expect(left[13], 0xFF);
-    expect(center[13 + 23], 0x08);
+    expect(center[13 + 23], 0x0F);
+    expect(center[13 + 24], 0xF0);
     expect(right[13 + 47], 0x01);
   });
 
