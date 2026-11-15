@@ -132,6 +132,17 @@ class _HomeState extends State<Home> {
       'نقاط أخف': 'Lighter dots',
       'نمط شبكي': 'Dither pattern',
       'أبيض وأسود مباشر': 'Direct black and white',
+      'معاينة النص كما سيُطبع': 'Text preview as printed',
+      'معاينة حرارية مطابقة لإعدادات الطباعة': 'Thermal preview using current print settings',
+      'تعذر اختيار الصورة:': 'Could not select image:',
+      'معاينة حرارية للصفحة الأولى من PDF': 'Thermal preview of the first PDF page',
+      'نوع ملف غير مدعوم للمعاينة': 'Unsupported preview file type',
+      'تعذرت المعاينة:': 'Preview failed:',
+      'تُطبّق على النصوص والصور والملفات المشتركة': 'Applied to text, images, and shared files',
+      'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا': 'Share an image, PDF, or text to preview it here',
+      'تعذر عرض الملف': 'Unable to display file',
+      'المعاينة للعنصر الأول من': 'Preview shows the first of',
+      'عناصر؛ ستتم طباعة جميع العناصر المدعومة.': 'items; all supported items will be printed.',
     };
     return translations[ar] ?? ar;
   }
@@ -222,7 +233,7 @@ class _HomeState extends State<Home> {
             alignment: printAlignment,
             mode: rasterMode,
           );
-          sharePreviewLabel = 'معاينة النص كما سيُطبع';
+          sharePreviewLabel = tr('معاينة النص كما سيُطبع');
         }
       } else {
         final path = item['path']?.toString() ?? '';
@@ -235,7 +246,7 @@ class _HomeState extends State<Home> {
             alignment: printAlignment,
             mode: rasterMode,
           );
-          sharePreviewLabel = 'معاينة حرارية مطابقة لإعدادات الطباعة';
+          sharePreviewLabel = tr('معاينة حرارية مطابقة لإعدادات الطباعة');
         } else if (mime == 'application/pdf' || path.toLowerCase().endsWith('.pdf')) {
           final count = await bridge.pdfPageCount(path);
           if (count > 0) {
@@ -250,14 +261,14 @@ class _HomeState extends State<Home> {
               alignment: printAlignment,
               mode: rasterMode,
             );
-            sharePreviewLabel = 'معاينة حرارية للصفحة الأولى من PDF ($count صفحة)';
+            sharePreviewLabel = '${tr('معاينة حرارية للصفحة الأولى من PDF')} ($count ${tr('صفحة')})';
           }
         } else {
-          sharePreviewLabel = item['name']?.toString() ?? 'نوع ملف غير مدعوم للمعاينة';
+          sharePreviewLabel = item['name']?.toString() ?? tr('نوع ملف غير مدعوم للمعاينة');
         }
       }
     } catch (error) {
-      sharePreviewLabel = 'تعذرت المعاينة: $error';
+      sharePreviewLabel = '${tr('تعذرت المعاينة:')} $error';
     } finally {
       if (mounted) setState(() => preparingPreview = false);
     }
@@ -467,7 +478,7 @@ class _HomeState extends State<Home> {
     } catch (error) {
       toast('تعذر طباعة المشاركة: $error');
     } finally {
-      if (mounted) setState(() => printingShare = false);
+      for (final item in sharedItems) {\n        final path = item['path']?.toString() ?? '';\n        if (path.isNotEmpty) {\n          try { await File(path).delete(); } catch (_) {}\n        }\n      }\n      if (mounted) setState(() => printingShare = false);
     }
   }
 
@@ -626,7 +637,7 @@ class _HomeState extends State<Home> {
                   Row(children: [
                     const Icon(Icons.receipt_long_outlined),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(preparingPreview ? 'جارٍ تجهيز المعاينة...' : (sharePreviewLabel ?? 'معاينة الطباعة'))),
+                    Expanded(child: Text(preparingPreview ? tr('جارٍ تجهيز المعاينة...') : (sharePreviewLabel ?? tr('معاينة الطباعة')))),
                     Text('$paperWidthMm مم', style: Theme.of(context).textTheme.labelMedium),
                   ]),
                   const SizedBox(height: 10),
@@ -642,11 +653,11 @@ class _HomeState extends State<Home> {
                                 sharePreviewBytes!,
                                 fit: BoxFit.contain,
                                 filterQuality: FilterQuality.none,
-                                errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(24), child: Text('تعذر عرض الملف')),
+                                errorBuilder: (_, __, ___) => const Padding(padding: EdgeInsets.all(24), child: Text(tr('تعذر عرض الملف'))),
                               )
                             : Padding(
                                     padding: const EdgeInsets.all(24),
-                                    child: Text(sharePreviewLabel ?? 'شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا'),
+                                    child: Text(sharePreviewLabel ?? tr('شارك صورة أو PDF أو نصاً لعرض معاينة الطباعة هنا')),
                                   ),
                   ),
                   if (sharedItems.length > 1)
@@ -741,7 +752,7 @@ class _HomeState extends State<Home> {
             initialValue: printAlignment,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              helperText: 'تُطبّق على النصوص والصور والملفات المشتركة',
+              helperText: tr('تُطبّق على النصوص والصور والملفات المشتركة'),
             ),
             items: [
               DropdownMenuItem(value: 'right', child: Text(tr('يمين'))),
