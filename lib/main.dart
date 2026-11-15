@@ -490,11 +490,6 @@ class _HomeState extends State<Home> {
 
       if (printed > 0) {
         toast('تم إرسال $printed عنصر/صفحة للطباعة');
-        if (automatic && launchedFromShare) {
-          launchedFromShare = false;
-          await Future<void>.delayed(const Duration(milliseconds: 700));
-          await bridge.closeApp();
-        }
       } else {
         toast('نوع الملف غير مدعوم حالياً؛ استخدم صورة أو PDF أو نصاً');
       }
