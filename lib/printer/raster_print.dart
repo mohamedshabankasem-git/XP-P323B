@@ -273,7 +273,7 @@ class RasterPrint {
           height: 1.35,
         ),
       ),
-      textDirection: RegExp(r'[\\u0600-\\u06FF]').hasMatch(content) ? TextDirection.rtl : TextDirection.ltr,
+      textDirection: RegExp(r'[\u0600-\u06FF]').hasMatch(content) ? TextDirection.rtl : TextDirection.ltr,
       // Keep the raster itself content-sized; ESC a on the printer performs
       // the final left/center/right positioning.
       textAlign: TextAlign.start,
