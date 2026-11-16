@@ -499,14 +499,8 @@ class _HomeState extends State<Home> {
     } catch (error) {
       toast('تعذر طباعة المشاركة: $error');
     } finally {
-      if (printed > 0) {
-        for (final item in sharedItems) {
-          final path = item['path']?.toString() ?? '';
-          if (path.isNotEmpty) {
-            try { await File(path).delete(); } catch (_) {}
-          }
-        }
-      }
+      // Keep received files available for 24 hours. Android-side cleanup
+      // removes only expired files from the app's shared_files directory.
       if (mounted) setState(() => printingShare = false);
     }
   }
