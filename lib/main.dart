@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
@@ -425,6 +426,10 @@ class _HomeState extends State<Home> {
 
     setState(() => printingShare = true);
     var printed = 0;
+    final jobClock = Stopwatch()..start();
+    void printTiming(String stage, Duration elapsed, {int? bytes}) {
+      developer.log('stage=$stage elapsedMs=${elapsed.inMilliseconds}${bytes == null ? '' : ' bytes=$bytes'} totalMs=${jobClock.elapsedMilliseconds}', name: 'XPPrinter.PrintTiming');
+    }
     try {
       if (!await ensureConnected()) {
         toast(
@@ -441,10 +446,15 @@ class _HomeState extends State<Home> {
         if (path.isEmpty) throw StateError('مسار الملف المستلم غير موجود');
 
         if (mime.startsWith('image/')) {
+          var stageClock = Stopwatch()..start();
           final bytes = await File(path).readAsBytes();
-          await bridge.write(
-            await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode),
-          );
+          printTiming('image_read', stageClock.elapsed, bytes: bytes.length);
+          stageClock = Stopwatch()..start();
+          final command = await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode);
+          printTiming('image_raster_conversion', stageClock.elapsed, bytes: command.length);
+          stageClock = Stopwatch()..start();
+          await bridge.write(command);
+          printTiming('bluetooth_or_usb_write', stageClock.elapsed, bytes: command.length);
           printed++;
         } else if (mime == 'application/pdf' ||
             path.toLowerCase().endsWith('.pdf')) {
@@ -454,20 +464,28 @@ class _HomeState extends State<Home> {
           }
           // Render, convert and send each page before rendering the next one.
           for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            var stageClock = Stopwatch()..start();
             final pagePath = await bridge.renderPdfPage(
               path,
               pageIndex: pageIndex,
               widthDots: printWidthDots,
             );
+            printTiming('pdf_render_page_$pageIndex', stageClock.elapsed);
             try {
+              stageClock = Stopwatch()..start();
               final bytes = await File(pagePath).readAsBytes();
+              printTiming('pdf_read_page_$pageIndex', stageClock.elapsed, bytes: bytes.length);
+              stageClock = Stopwatch()..start();
               final command = await RasterPrint.imageToEscPosAsync(
                 bytes,
                 maxWidth: printWidthDots,
                 alignment: printAlignment,
                 mode: rasterMode,
               );
+              printTiming('pdf_raster_conversion_page_$pageIndex', stageClock.elapsed, bytes: command.length);
+              stageClock = Stopwatch()..start();
               await bridge.write(command);
+              printTiming('pdf_write_page_$pageIndex', stageClock.elapsed, bytes: command.length);
               printed++;
             } finally {
               try {
@@ -478,19 +496,34 @@ class _HomeState extends State<Home> {
         }
       }
 
-      if (customPrintImagePath != null) { final bytes = await File(customPrintImagePath!).readAsBytes(); await bridge.write(await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode)); printed++; }
+      if (customPrintImagePath != null) {
+        var stageClock = Stopwatch()..start();
+        final bytes = await File(customPrintImagePath!).readAsBytes();
+        printTiming('custom_image_read', stageClock.elapsed, bytes: bytes.length);
+        stageClock = Stopwatch()..start();
+        final command = await RasterPrint.imageToEscPosAsync(bytes, maxWidth: printWidthDots, alignment: printAlignment, mode: rasterMode);
+        printTiming('custom_image_raster_conversion', stageClock.elapsed, bytes: command.length);
+        stageClock = Stopwatch()..start();
+        await bridge.write(command);
+        printTiming('custom_image_write', stageClock.elapsed, bytes: command.length);
+        printed++;
+      }
       if (sharedText.trim().isNotEmpty) {
-        await bridge.write(
-          await RasterPrint.textToEscPos(
+        var stageClock = Stopwatch()..start();
+        final command = await RasterPrint.textToEscPos(
             sharedText,
             widthDots: printWidthDots,
             alignment: printAlignment,
             mode: rasterMode,
-          ),
-        );
+          );
+        printTiming('text_raster_conversion', stageClock.elapsed, bytes: command.length);
+        stageClock = Stopwatch()..start();
+        await bridge.write(command);
+        printTiming('text_write', stageClock.elapsed, bytes: command.length);
         printed++;
       }
 
+      printTiming('print_job_total', jobClock.elapsed);
       if (printed > 0) {
         toast('تم إرسال $printed عنصر/صفحة للطباعة');
       } else {
