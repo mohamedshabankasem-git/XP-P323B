@@ -717,6 +717,7 @@ class MainActivity : FlutterActivity() {
         "usb:" + device.vendorId + ":" + device.productId + ":" + device.deviceName
 
     private fun writeData(bytes: ByteArray) {
+        val writeStartedAt = android.os.SystemClock.elapsedRealtime()
         val socket = bt
         if (socket != null && socket.isConnected) {
             val output = socket.outputStream
@@ -728,6 +729,7 @@ class MainActivity : FlutterActivity() {
                 offset = end
             }
             output.flush()
+            android.util.Log.i("XPPrinterTiming", "transport=bluetooth bytes=${bytes.size} elapsedMs=${android.os.SystemClock.elapsedRealtime() - writeStartedAt}")
             return
         }
 
