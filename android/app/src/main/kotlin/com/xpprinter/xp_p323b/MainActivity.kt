@@ -64,6 +64,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        cleanupExpiredSharedFiles()
         val filter = IntentFilter(usbResultAction)
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -267,7 +268,20 @@ class MainActivity : FlutterActivity() {
         receiveShare(intent)
     }
 
+    private fun cleanupExpiredSharedFiles() {
+        val sharedDirectory = File(filesDir, "shared_files")
+        if (!sharedDirectory.isDirectory) return
+        val expirationAgeMs = 24L * 60L * 60L * 1000L
+        val expirationTime = System.currentTimeMillis() - expirationAgeMs
+        sharedDirectory.listFiles()?.forEach { file ->
+            if (file.isFile && file.lastModified() < expirationTime) {
+                runCatching { file.delete() }
+            }
+        }
+    }
+
     private fun receiveShare(intent: Intent?) {
+        cleanupExpiredSharedFiles()
         if (intent == null ||
             (intent.action != Intent.ACTION_SEND &&
                 intent.action != Intent.ACTION_SEND_MULTIPLE)
