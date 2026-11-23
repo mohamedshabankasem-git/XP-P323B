@@ -177,8 +177,7 @@ class _HomeState extends State<Home> {
   int get printWidthDots => paperWidthDots;
 
   @override
-  void initState() {
-    super.initState();
+  void initState() {    super.initState();
     shareSub = bridge.shares.listen(_onShared, onError: (Object error) {
       if (mounted) toast('تعذر استقبال المشاركة: $error');
     });
@@ -357,8 +356,7 @@ class _HomeState extends State<Home> {
           status['address']?.toString() ?? '',
           status['transport']?.toString() ?? 'bluetooth',
         );
-        if (mounted) setState(() {});
-        return true;
+        if (mounted) setState(() {});        return true;
       }
     } catch (error) {
       toast('تعذر التحقق من اتصال الطابعة: $error');
@@ -537,7 +535,6 @@ class _HomeState extends State<Home> {
       if (mounted) setState(() => printingShare = false);
     }
   }
-
   Future<void> changeLanguage(String language) async {
     try {
       await bridge.setLanguage(language);
@@ -717,13 +714,27 @@ class _HomeState extends State<Home> {
                   if (sharedItems.length > 1)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text('${tr('المعاينة للعنصر الأول من')} ${sharedItems.length} ${tr('عناصر؛ ستتم طباعة جميع العناصر المدعومة.')}'),
-                    ),
+                      child: Text('${tr('المعاينة للعنصر الأول من')} ${sharedItems.length} ${tr('عناصر؛ ستتم طباعة جميع العناصر المدعومة.')}'),                    ),
                 ],
               ),
             ),
           ),
           OutlinedButton.icon(onPressed: pickImageForPrint, icon: const Icon(Icons.add_photo_alternate_outlined), label: Text(tr('إدراج صورة'))),
+          OutlinedButton.icon(
+            onPressed: busy || printingShare ? null : reconnectSavedPrinter,
+            icon: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+            label: Text(
+              busy
+                  ? tr('جارٍ البحث والاستعادة...')
+                  : tr('إعادة الاتصال بالطابعة المحفوظة'),
+            ),
+          ),
           if (customPrintImageName != null) ListTile(dense: true, leading: const Icon(Icons.image_outlined), title: Text(customPrintImageName!), trailing: IconButton(icon: const Icon(Icons.close), onPressed: () { setState(() { customPrintImagePath = null; customPrintImageName = null; }); _prepareSharePreview(); })),
           FilledButton.icon(onPressed: printingShare || (sharedItems.isEmpty && sharedText.trim().isEmpty && customPrintImagePath == null) ? null : () => printShared(),
             icon: printingShare
